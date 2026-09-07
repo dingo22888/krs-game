@@ -10,6 +10,7 @@ export interface FloorPlan {
   id:FloorId; name:string; height:number; footprint:Point2[]; walls:Point2[][];
   rooms:Room[]; openings:Opening[]; furniture:Furniture[]; stairZones:Rect[];
   spawn:{x:number;z:number;yaw:number};
+  alternateSpawn?:{label:string;x:number;z:number;yaw:number};
 }
 
 // Entirely synthetic test geometry. None of these dimensions, objects or room

@@ -96,7 +96,7 @@ test('crouch passes under a low obstacle; standing is blocked until clear',()=>{
   assert.ok(player.body.translation().z < -1.5,'crouching did not pass');
   run(player,.2);
   assert.ok(player.crouched,'stood inside obstacle');
-  run(player,2,{forward:1,crouch:true});run(player,.2);
+  run(player,2,{forward:1,crouch:true});run(player,.6);
   assert.equal(player.height,PLAYER.standingHeight);
   world.free();
 });
@@ -122,6 +122,38 @@ test('rectangle decomposition preserves the area of an L-shaped wall',()=>{
   const rects=decomposePolygon([[0,0],[3,0],[3,.2],[.2,.2],[.2,2],[0,2]]);
   const area=rects.reduce((a,r)=>a+(r[2]-r[0])*(r[3]-r[1]),0);
   assert.ok(Math.abs(area-.96)<1e-8);
+});
+
+test('crouching and standing interpolate in both directions with stable feet',()=>{
+  const world=fixture(),player=new Player(world,0,0);run(player,.2);
+  const feet=player.body.translation().y;
+  const heights:number[]=[];
+  for(let i=0;i<60;i++){player.step({...idleInput(),crouch:true},0);heights.push(player.height);}
+  assert.ok(heights[0]>1.7 && heights[0]<1.8,'ducking snapped to the target');
+  assert.ok(heights[12]>1.1 && heights[12]<1.4,'ducking should settle in a few tenths of a second');
+  assert.equal(heights.at(-1),PLAYER.crouchingHeight);
+  assert.ok(Math.abs(player.body.translation().y-feet)<.025);
+  let previous=player.height;
+  for(let i=0;i<60;i++) {
+    player.step(idleInput(),0);
+    assert.ok(player.height>=previous && player.height-previous<.09,'standing was not smooth');
+    previous=player.height;
+  }
+  assert.equal(player.height,PLAYER.standingHeight);
+  world.free();
+});
+
+test('reversing crouch mid-transition stays continuous and cannot expand into a ceiling',()=>{
+  const world=fixture(),player=new Player(world,0,0);run(player,.2);
+  run(player,.1,{crouch:true});const midway=player.height;
+  player.step(idleInput(),0);
+  assert.ok(player.height>midway && player.height-midway<.09);
+  run(player,.6,{crouch:true});
+  box(world,0,1.5,0,4,.5,4);world.step();
+  run(player,.6);
+  assert.equal(player.height,PLAYER.crouchingHeight);
+  assert.ok(player.crouched);
+  world.free();
 });
 
 for(const id of floorOrder) {

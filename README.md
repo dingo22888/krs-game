@@ -1,8 +1,20 @@
 # KRS Game / KrausMansion
 
 Browser-Spiel mit Ego-Steuerung, Gravitation und Kollisionen. Dieser öffentliche
-Stand enthält **neutrale Testräume**. Das separat vorbereitete Modell des echten
-Hauses wird erst nach ausdrücklicher Freigabe veröffentlicht.
+Stand enthält einen **neutralen Testraum** und kann ein privates Hausmodell
+lokal aus einer JSON-Datei laden. Private Grundrisse werden nicht veröffentlicht.
+
+## Eigenes Haus laden
+
+1. Die separat bereitgestellte Hausdatei auf dem eigenen Gerät speichern.
+2. Im Spiel auf **Hausmodell laden** klicken und die JSON-Datei auswählen.
+3. Danach erscheinen KG, EG, OG und DG mit ihren eigenen Räumen und Grundrissen.
+
+Die Datei wird mit der Browser-Datei-API gelesen, ohne Upload oder Modellabruf
+von einem Server. Optional speichert **Auf diesem Gerät merken** das Modell im
+lokalen Browserspeicher, sodass es nach einem Neuladen wieder verfügbar ist.
+Das Deaktivieren dieser Option entfernt die gespeicherte Kopie. Ohne geladenes
+Modell gibt es bewusst keine irreführende Auswahl identischer Etagen.
 
 ## Vercel
 
@@ -38,8 +50,9 @@ Maussteuerung. Benötigt WebGL 2, Maus und Tastatur.
 | Shift halten | Schnelles Gehen |
 | Esc | Pause und Maus freigeben |
 
-Im Menü lassen sich Testetage, Startpunkt und Mausempfindlichkeit wählen.
-Alle vier Testetagen verwenden bewusst dieselbe synthetische Geometrie.
+Im Menü lassen sich nach dem Modellimport Etage, Startpunkt und
+Mausempfindlichkeit wählen. Optionale zusätzliche Startpunkte kommen aus der
+Modell-Datei.
 
 ## Stack
 
@@ -49,7 +62,9 @@ Alle vier Testetagen verwenden bewusst dieselbe synthetische Geometrie.
 - HTML/CSS für deutsches Menü und Live-Grundriss.
 
 Eine Einheit entspricht einem Meter. Fester Physik-Takt mit 120 Hz und
-interpoliertes Rendering. Diagonale Eingaben werden normalisiert. Der Spieler
+interpoliertes Rendering. Ducken und Aufstehen ändern Kamera und Kollisionskörper
+in beiden Richtungen weich, während die Füße am Boden bleiben.
+Diagonale Eingaben werden normalisiert. Der Spieler
 kann nicht ohne Kopffreiheit aufstehen. Kleine Stufen werden unterstützt.
 Pause, Tabwechsel und Fokusverlust löschen gedrückte Tasten.
 
@@ -61,17 +76,20 @@ npm run build
 npm run preview
 ```
 
-14 Tests führen Rapier aus und prüfen Bewegung, Sprint, Ducken, Kopffreiheit,
+19 Tests prüfen den Modellimport und führen Rapier aus: Bewegung, Sprint,
+weiches Ducken, Kopffreiheit,
 Springen/Landung/Deckenkontakt, dünne Wände, Objekte, Türdurchgänge, Stufen,
 Bildraten sowie Startpunkte und Raum-Erreichbarkeit.
 
-Ein interaktiver Browser-Spieltest steht noch aus: Nach dem Deployment
+Die interne Browservorschau war durch eine Zugriffssperre nicht erreichbar.
+Ein interaktiver Browser-Spieltest steht daher noch aus: Nach dem Deployment
 Pointer Lock, Mausbewegung, alle Tasten, Pause/Tabwechsel und Raumdurchgänge
 in Chrome und Firefox ausprobieren. Touch-Steuerung ist nicht implementiert.
 
 ## Code
 
 - `src/data/house.ts`: Modell-Schnittstelle und neutrale Testräume.
+- `src/data/import-model.ts`: begrenzter und validierter lokaler JSON-Import.
 - `src/game/model.ts`: gemeinsame Geometrie für Darstellung und Kollisionen.
 - `src/game/player.ts`: vom DOM unabhängige Bewegungsphysik.
 - `src/game/scene.ts`: Three.js und Rapier-Welt.

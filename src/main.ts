@@ -1,7 +1,8 @@
 import './style.css';
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
-import { floors, floorOrder } from './data/house.ts';
+import { floors as testFloors, floorOrder } from './data/house.ts';
+import { parseHouseModel, MODEL_STORAGE_KEY, MAX_MODEL_BYTES } from './data/import-model.ts';
 import type { FloorId } from './data/house.ts';
 import { inPolygon } from './game/geometry.ts';
 import { createHouseScene } from './game/scene.ts';
@@ -10,21 +11,22 @@ import { Player, FIXED_DT, idleInput } from './game/player.ts';
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <canvas id="game" aria-label="Begehbares 3D-Modell der KrausMansion"></canvas>
   <header class="brand"><span class="brand-mark">K.</span><div>KRAUSMANSION<span>Bewegung ausprobieren.</span></div></header>
-  <div class="location"><span id="floor-name">Erdgeschoss</span><strong id="room-name">Wohnzimmer</strong></div>
+  <div class="location"><span id="floor-name">Testraum</span><strong id="room-name">Bewegungsraum</strong></div>
   <div id="crosshair" aria-hidden="true"></div>
-  <aside class="map"><div class="map-caption"><span id="map-floor">EG / GRUNDRISS</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
+  <aside class="map"><div class="map-caption"><span id="map-floor">TESTRAUM</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
   <div class="movement"><span id="movement-state">Bereit zum Erkunden</span><span class="movement-line"></span><span id="eye-height">Augenhöhe 1,68 m</span></div>
   <div class="play-help"><kbd>W A S D</kbd> Bewegen <kbd>Leertaste</kbd> Springen <kbd>Strg</kbd> Ducken <kbd>Shift</kbd> Schnell gehen <kbd>Esc</kbd> Menü</div>
   <dialog id="menu" aria-labelledby="menu-title">
     <p class="eyebrow">KRS GAME <span>ERKUNDUNG / 01</span></p>
     <h1 id="menu-title">Kraus<span>Mansion.</span></h1>
     <p class="intro" id="intro">Bewegen, springen und ducken.<br>Teste die Steuerung im Browser.</p>
-    <div class="floor-picker" aria-label="Etage auswählen">${floorOrder.map(id=>`<button type="button" class="floor-option" data-floor="${id}" aria-pressed="${id==='eg'}"><strong>${id.toUpperCase()}</strong><span>${({kg:'Keller',eg:'Erdgeschoss',og:'Obergeschoss',dg:'Dachgeschoss'})[id]}</span></button>`).join('')}</div>
+    <div id="floor-picker" class="floor-picker" aria-label="Etage auswählen" hidden>${floorOrder.map(id=>`<button type="button" class="floor-option" data-floor="${id}" aria-pressed="${id==='eg'}"><strong>${id.toUpperCase()}</strong><span>${({kg:'Keller',eg:'Erdgeschoss',og:'Obergeschoss',dg:'Dachgeschoss'})[id]}</span></button>`).join('')}</div>
+    <div class="model-import"><button id="import-model" type="button" disabled>Hausmodell laden</button><input id="model-file" type="file" accept=".json,application/json" hidden /><label><input id="remember-model" type="checkbox" /> Auf diesem Gerät merken</label><p>Die Datei wird nur in diesem Browser gelesen.</p></div>
     <button type="button" class="start" id="start" disabled><span id="start-label">Testraum wird geladen …</span><span aria-hidden="true">↗</span></button>
     <p id="status" class="status" role="status">3D-Modell und Bewegung werden vorbereitet.</p>
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
-    <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><button id="reset" type="button" disabled>Zum Startpunkt</button></div>
-    <p class="model-note">Neutrale Testräume für Bewegung und Kollisionen. Das separat vorbereitete Hausmodell ist in dieser öffentlichen Version noch nicht enthalten.</p>
+    <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
+    <p id="model-note" class="model-note">Noch kein Hausmodell geladen. Aktuell siehst du einen neutralen Testraum.</p>
     <p class="device-note">Zum Spielen brauchst du Maus und Tastatur.</p>
   </dialog>
 `;
@@ -42,6 +44,8 @@ const controlledKeys = new Set(['KeyW','KeyA','KeyS','KeyD','Space','ControlLeft
 let house:ReturnType<typeof createHouseScene>;
 let player:Player;
 let renderer:THREE.WebGLRenderer;
+let floors = testFloors;
+let customModel = false;
 let activeFloor:FloorId = 'eg';
 let yaw = floors.eg.spawn.yaw, pitch = -.04;
 let locked = false, ready = false, hasPlayed = false;
@@ -54,6 +58,7 @@ camera.rotation.order = 'YXZ';
 const previousPosition = new THREE.Vector3();
 const interpolatedPosition = new THREE.Vector3();
 let cameraEye = 1.68;
+let previousHeight:number = 1.8;
 
 menu.showModal();
 menu.addEventListener('cancel',event=>event.preventDefault());
@@ -86,22 +91,30 @@ function updateMap() {
 }
 
 function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
-  if (house) {player.dispose();house.dispose();}
-  activeFloor = id;
   const plan = floors[id];
-  house = createHouseScene(plan);
+  const nextHouse = createHouseScene(plan);
   const spawn = spawnOverride ?? plan.spawn;
-  player = new Player(house.world,spawn.x,spawn.z);
-  for(let i=0;i<24;i++)player.step(idleInput(),spawn.yaw);
+  let nextPlayer:Player;
+  try {
+    nextPlayer = new Player(nextHouse.world,spawn.x,spawn.z);
+    for(let i=0;i<24;i++)nextPlayer.step(idleInput(),spawn.yaw);
+  } catch(error) {nextHouse.dispose();throw error;}
+  if (house) {player.dispose();house.dispose();}
+  house=nextHouse;player=nextPlayer;activeFloor=id;
   yaw = spawn.yaw;pitch = -.04;cameraEye=1.68;
   const position = player.body.translation();
+  previousHeight=player.height;
   previousPosition.set(position.x,position.y,position.z);
   camera.position.set(position.x,position.y+cameraEye,position.z);
   camera.rotation.set(pitch,yaw,0,'YXZ');
   accumulator = 0;keys.clear();
   document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.floor===id)));
-  $('floor-name').textContent=plan.name;$('map-floor').textContent=`${id.toUpperCase()} / GRUNDRISS`;
+  $('floor-name').textContent=customModel?plan.name:'Testraum';$('map-floor').textContent=customModel?`${id.toUpperCase()} / GRUNDRISS`:'TESTRAUM';
+  $('alternate-spawn').hidden=!plan.alternateSpawn;
+  $('alternate-spawn').textContent=plan.alternateSpawn?.label ?? '';
+  $('movement-state').textContent='Bereit zum Erkunden';
   $('eye-height').textContent='Augenhöhe 1,68 m';
+  status.textContent=customModel?`${plan.name} geladen.`:'Lade dein Hausmodell, um die vier Etagen zu erkunden.';
   updateMap();renderDirty=true;
 }
 
@@ -110,10 +123,44 @@ function pause() {
   document.body.classList.remove('playing');
   if(!menu.open)menu.showModal();
   $('menu-title').innerHTML = hasPlayed ? 'Kurze<span>Pause.</span>' : 'Kraus<span>Mansion.</span>';
-  $('intro').innerHTML = hasPlayed ? 'Schau dich weiter um oder<br>erkunde eine andere Etage.' : 'Bewegen, springen und ducken.<br>Teste die Steuerung im Browser.';
-  $('start-label').textContent = hasPlayed ? 'Weiter erkunden' : 'Testraum betreten';
+  $('intro').textContent = customModel ? 'Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.' : 'Lade dein Hausmodell oder probiere die Bewegung im Testraum aus.';
+  $('start-label').textContent = hasPlayed ? 'Weiter erkunden' : customModel ? 'Haus betreten' : 'Testraum betreten';
   status.textContent = 'Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
 }
+
+
+function loadModel(text:string) {
+  const candidate = parseHouseModel(text);
+  // Replace the active dataset as a unit, then rebuild scene, physics and map.
+  const previous = floors;
+  floors = candidate;
+  try { setFloor('eg'); } catch(error) { floors=previous;setFloor('eg');throw error; }
+  customModel = true;
+  $('floor-picker').hidden=false;
+  $('floor-name').textContent=floors.eg.name;$('map-floor').textContent='EG / GRUNDRISS';
+  $('start-label').textContent=hasPlayed?'Weiter erkunden':'Haus betreten';
+  $('intro').textContent='Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.';
+  $('model-note').textContent='Hausmodell lokal geladen. Höhen und Einrichtung vorläufig; Etagenwechsel im Menü, Treppenbereiche noch eben.';
+  status.textContent='Vier unterschiedliche Etagen geladen.';
+}
+$('import-model').addEventListener('click',()=>{if(ready)$<HTMLInputElement>('model-file').click();});
+$('model-file').addEventListener('change',async()=>{
+  const input=$<HTMLInputElement>('model-file');const file=input.files?.[0];if(!file)return;
+  try {
+    if(file.size>MAX_MODEL_BYTES)throw new Error('Die Hausdatei ist zu groß (maximal 512 KB).');
+    const text=await file.text();loadModel(text);
+    try {if($<HTMLInputElement>('remember-model').checked)localStorage.setItem(MODEL_STORAGE_KEY,text);else localStorage.removeItem(MODEL_STORAGE_KEY);}
+    catch {status.textContent='Haus geladen. Dauerhaftes Speichern ist in diesem Browser nicht verfügbar.';}
+  } catch(error) {status.textContent=error instanceof Error?error.message:'Hausdatei konnte nicht geladen werden.';}
+  input.value='';
+});
+$('remember-model').addEventListener('change',()=>{
+  try {
+    if($<HTMLInputElement>('remember-model').checked&&customModel)localStorage.setItem(MODEL_STORAGE_KEY,JSON.stringify({format:'krs-house',version:1,floors}));
+    else localStorage.removeItem(MODEL_STORAGE_KEY);
+  } catch {status.textContent='Dauerhaftes Speichern ist in diesem Browser nicht verfügbar.';}
+});
+$('alternate-spawn').addEventListener('click',()=>{const point=floors[activeFloor].alternateSpawn;if(ready&&point)setFloor(activeFloor,point);});
 
 start.addEventListener('click',async()=>{
   if (!ready) return;
@@ -168,13 +215,13 @@ function animate(time:number) {
     };
     while(accumulator>=FIXED_DT) {
       const pos=player.body.translation();previousPosition.set(pos.x,pos.y,pos.z);
+      previousHeight=player.height;
       player.step(input,yaw);accumulator-=FIXED_DT;
     }
     const pos=player.body.translation();
     if(pos.y < -5) {setFloor(activeFloor);return;}
     interpolatedPosition.set(pos.x,pos.y,pos.z).lerp(previousPosition,1-accumulator/FIXED_DT);
-    const targetEye = player.height-.12;
-    cameraEye = Math.min(targetEye,cameraEye+(targetEye-cameraEye)*(1-Math.exp(-18*dt)));
+    cameraEye = THREE.MathUtils.lerp(previousHeight,player.height,accumulator/FIXED_DT)-.12;
     camera.position.copy(interpolatedPosition);camera.position.y+=cameraEye;
     camera.rotation.set(pitch,yaw,0,'YXZ');
     mapTimer+=dt;
@@ -196,7 +243,9 @@ async function init() {
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
     setFloor('eg');ready=true;start.disabled=false;reset.disabled=false;
-    $('start-label').textContent='Testraum betreten';
+    $<HTMLButtonElement>('import-model').disabled=false;
+    try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
+    $('start-label').textContent=customModel?'Haus betreten':'Testraum betreten';
     status.textContent='Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
     frameId=requestAnimationFrame(animate);
   } catch(error) {

@@ -4,7 +4,7 @@ export const FIXED_DT = 1/120;
 export const PLAYER = {
   radius:.23, standingHeight:1.8, crouchingHeight:1.1,
   walkSpeed:2.3, sprintSpeed:4.4, crouchSpeed:1.15,
-  gravity:18, jumpSpeed:5.7, skin:.012,
+  gravity:18, jumpSpeed:5.7, skin:.012, stanceSharpness:14,
 } as const;
 export interface MovementInput { forward:number; right:number; sprint:boolean; crouch:boolean; jump:boolean }
 export const idleInput = (): MovementInput => ({forward:0,right:0,sprint:false,crouch:false,jump:false});
@@ -40,28 +40,35 @@ export class Player {
     world.step();
   }
 
-  private updateStance(wantsCrouch:boolean) {
-    const next = wantsCrouch ? PLAYER.crouchingHeight : PLAYER.standingHeight;
-    if (next === this.height) return;
+  private updateStance(wantsCrouch:boolean, dt:number) {
+    const target = wantsCrouch ? PLAYER.crouchingHeight : PLAYER.standingHeight;
+    this.crouched = wantsCrouch || this.height < PLAYER.standingHeight;
+    if (target === this.height) return;
     const feet = this.body.translation();
-    if (next > this.height) {
-      const standingShape = new RAPIER.Capsule(next/2-PLAYER.radius,PLAYER.radius);
+    if (target > this.height) {
+      const standingShape = new RAPIER.Capsule(target/2-PLAYER.radius,PLAYER.radius);
       const obstruction = this.world.intersectionWithShape(
-        {x:feet.x,y:feet.y+next/2,z:feet.z},
+        {x:feet.x,y:feet.y+target/2,z:feet.z},
         {x:0,y:0,z:0,w:1},standingShape,
         RAPIER.QueryFilterFlags.EXCLUDE_SENSORS,undefined,this.collider,this.body,
       );
       if (obstruction) return; // Remain crouched until there is headroom.
     }
+    // Feet remain fixed while the actual capsule changes height smoothly.
+    // Camera interpolation uses this same height, so it cannot lag above the head.
+    const blended = target+(this.height-target)*Math.exp(-PLAYER.stanceSharpness*dt);
+    const next = Math.abs(blended-target)<.001 ? target : blended;
     this.height = next;
-    this.crouched = wantsCrouch;
+    this.crouched = wantsCrouch || next < PLAYER.standingHeight;
     this.collider.setShape(new RAPIER.Capsule(next/2-PLAYER.radius,PLAYER.radius));
     this.collider.setTranslationWrtParent({x:0,y:next/2,z:0});
-    this.world.propagateModifiedBodyPositionsToColliders();
+    // Relative transforms are propagated at world.step(); the movement query
+    // below needs the new world transform now, before that step happens.
+    this.collider.setTranslation({x:feet.x,y:feet.y+next/2,z:feet.z});
   }
 
   step(input:MovementInput, yaw:number, dt = FIXED_DT) {
-    this.updateStance(input.crouch);
+    this.updateStance(input.crouch,dt);
     const speed = this.crouched ? PLAYER.crouchSpeed : input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
     const norm = Math.max(1,Math.hypot(input.forward,input.right));
     const forward = input.forward/norm, right = input.right/norm;
