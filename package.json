@@ -11,10 +11,12 @@
     "test": "node --experimental-strip-types --test tests/*.test.ts"
   },
   "dependencies": {
+    "@vercel/blob": "2.8.0",
     "@dimforge/rapier3d-compat": "0.20.0",
     "three": "0.185.1"
   },
   "devDependencies": {
+    "undici": "6.28.1",
     "@types/three": "0.185.0",
     "typescript": "5.9.3",
     "vite": "8.2.2"

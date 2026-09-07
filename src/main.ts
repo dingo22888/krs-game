@@ -36,6 +36,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <details id="advanced-settings" class="advanced-settings"><summary>Erweiterte Einstellungen</summary><div class="model-import"><button id="import-model" type="button" disabled>Anderes JSON laden</button><input id="model-file" type="file" accept=".json,application/json" hidden /><label><input id="remember-model" type="checkbox" /> Lokales Ersatzmodell merken</label><p>Optional: Die Datei wird nur in diesem Browser gelesen und ersetzt das automatisch geladene Modell für diese Sitzung.</p></div></details>
     <button type="button" class="start" id="start" disabled><span id="start-label">Hausmodell wird geladen …</span><span aria-hidden="true">↗</span></button>
     <p id="status" class="status" role="status">3D-Modell und Bewegung werden vorbereitet.</p>
+    <button id="retry-load" type="button" hidden>Erneut laden</button>
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
     <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
     <p id="model-note" class="model-note">Nach der Anmeldung wird das private Hausmodell automatisch geladen.</p>
@@ -80,6 +81,7 @@ let previousHeight:number = 1.8;
 menu.addEventListener('cancel',event=>event.preventDefault());
 
 function showAuthGate(message = '') {
+  if (menu.open) menu.close();
   authStatus.textContent = message;
   authGate.hidden = false;
   authPassword.focus();
@@ -298,6 +300,7 @@ function animate(time:number) {
 async function init() {
   try {
     if (!await checkAuthentication()) return;
+    if (!menu.open) menu.showModal();
     if(!canvas.requestPointerLock)throw new Error('Dieser Browser unterstützt keine Maussteuerung. Bitte nutze einen Desktop-Browser mit Maus und Tastatur.');
     renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
     renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);
@@ -316,11 +319,15 @@ async function init() {
     frameId=requestAnimationFrame(animate);
   } catch(error) {
     console.error(error);
+    ready=false;start.disabled=true;reset.disabled=true;
+    if (!menu.open) menu.showModal();
     $('start-label').textContent='Spiel konnte nicht starten';
-    status.textContent=error instanceof Error && error.message.startsWith('Dieser Browser') ? error.message : 'Das 3D-Spiel konnte nicht geladen werden. Bitte prüfe WebGL/Hardwarebeschleunigung und lade die Seite neu.';
+    status.textContent=error instanceof Error ? error.message : 'Das 3D-Spiel konnte nicht geladen werden. Bitte lade die Seite neu.';
     status.classList.add('error');
+    $('retry-load').hidden=false;
   }
 }
+$('retry-load').addEventListener('click',()=>location.reload());
 canvas.addEventListener('webglcontextlost',event=>{
   event.preventDefault();releaseInput();pause();ready=false;start.disabled=true;
   cancelAnimationFrame(frameId);

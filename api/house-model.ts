@@ -1,3 +1,5 @@
+import { get } from '@vercel/blob';
+
 const MAX_MODEL_BYTES = 512_000;
 const SESSION_COOKIE = 'krs_game_session';
 function encoded(value: string): Uint8Array { return new TextEncoder().encode(value); }
@@ -44,14 +46,47 @@ export default {
     if (request.method.toUpperCase() !== 'GET') return json({ error: 'Methode nicht erlaubt.' }, 405);
     if (!await isAuthenticated(request)) return json({ error: 'Anmeldung erforderlich.' }, 401);
 
-    const url = process.env.HOUSE_MODEL_URL;
-    const token = process.env.VERCEL_OIDC_TOKEN ?? process.env.BLOB_READ_WRITE_TOKEN;
-    if (!url || !token) return json({ error: 'Privates Hausmodell ist in Vercel noch nicht konfiguriert.' }, 503);
+    const url = process.env.HOUSE_MODEL_URL?.trim();
+    if (!url) {
+      console.error('[house-model] missing_model_url');
+      return json({ code: 'MODEL_URL_MISSING', error: 'HOUSE_MODEL_URL fehlt im aktiven Deployment. In Vercel für Production setzen und neu deployen.' }, 503);
+    }
     try {
-      const blob = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, cache: 'no-store' });
-      if (!blob.ok) return json({ error: 'Privates Hausmodell konnte nicht gelesen werden.' }, blob.status === 404 ? 404 : 502);
-      const model = await blob.text();
-      if (new TextEncoder().encode(model).byteLength > MAX_MODEL_BYTES) return json({ error: 'Das Hausmodell ist zu groß.' }, 413);
+      const target = new URL(url);
+      if (target.protocol !== 'https:' || !target.hostname.endsWith('.private.blob.vercel-storage.com') || target.username || target.password) throw new Error('Invalid private Blob URL');
+    } catch {
+      console.error('[house-model] invalid_model_url');
+      return json({ code: 'MODEL_URL_INVALID', error: 'HOUSE_MODEL_URL muss die HTTPS-URL der Datei im privaten Vercel-Blob-Store sein.' }, 503);
+    }
+    try {
+      // The SDK obtains rotating OIDC credentials from Vercel's request context.
+      // Do not require VERCEL_OIDC_TOKEN to exist in process.env at runtime.
+      console.info('[house-model] blob_read_started');
+      const blob = await get(url, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(15000) });
+      if (!blob || blob.statusCode !== 200) {
+        console.warn('[house-model] blob_not_found');
+        return json({ code: 'MODEL_NOT_FOUND', error: 'Die Hausdatei wurde im privaten Blob-Store nicht gefunden. HOUSE_MODEL_URL prüfen.' }, 404);
+      }
+      const reader = blob.stream.getReader();
+      const chunks: Uint8Array[] = [];
+      let bytes = 0;
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          bytes += value.byteLength;
+          if (bytes > MAX_MODEL_BYTES) {
+            await reader.cancel();
+            return json({ error: 'Das Hausmodell ist zu groß.' }, 413);
+          }
+          chunks.push(value);
+        }
+      } finally { reader.releaseLock(); }
+      const data = new Uint8Array(bytes);
+      let offset = 0;
+      for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.byteLength; }
+      const model = new TextDecoder().decode(data);
+      console.info('[house-model] blob_read_succeeded', { bytes });
       return new Response(model, {
         status: 200,
         headers: {
@@ -61,8 +96,15 @@ export default {
           'X-Content-Type-Options': 'nosniff',
         },
       });
-    } catch {
-      return json({ error: 'Verbindung zum privaten Hausmodell fehlgeschlagen.' }, 502);
+    } catch (error) {
+      // Log diagnostic codes only: SDK error messages may contain private URLs.
+      const message = error instanceof Error ? error.message : '';
+      if (message.includes('No blob credentials found') || message.includes('no storeId was found')) {
+        console.error('[house-model] blob_credentials_missing');
+        return json({ code: 'BLOB_AUTH_MISSING', error: 'Vercel-Blob-Zugriff fehlt. Store mit Production verknüpfen, OIDC aktivieren und neu deployen.' }, 503);
+      }
+      console.error('[house-model] blob_read_failed');
+      return json({ code: 'BLOB_READ_FAILED', error: 'Der private Blob-Store konnte nicht gelesen werden. Store-Verknüpfung und Zugriffsrechte prüfen.' }, 502);
     }
   },
 };

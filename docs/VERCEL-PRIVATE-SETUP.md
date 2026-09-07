@@ -9,9 +9,10 @@ Vercel-Blob-Store.
 1. In Vercel das Projekt `krs-game` öffnen und zu **Storage** wechseln.
 2. **Create Database → Blob** wählen und beim Zugriff **Private** auswählen.
 3. Den Store mit dem Projekt und der Production-Umgebung verbinden. Vercel
-   stellt für serverseitige Funktionen standardmäßig `BLOB_STORE_ID` und den
-   kurzlebigen `VERCEL_OIDC_TOKEN` bereit. Der Token wird nicht in den Browser
-   ausgeliefert.
+   stellt `BLOB_STORE_ID` und kurzlebige OIDC-Zugangsdaten bereit. Die Function
+   nutzt `@vercel/blob`, das den Token aus dem Anfragekontext bezieht. Er muss
+   zur Laufzeit nicht als `process.env.VERCEL_OIDC_TOKEN` vorhanden sein und
+   wird nicht in den Browser ausgeliefert.
 4. Im Blob-Store den Reiter **Files** öffnen und dort **Upload** wählen. Falls
    dieser Button in deiner Vercel-Ansicht fehlt, kann der offizielle CLI-Weg
    verwendet werden (aus dem verknüpften Projektverzeichnis):
@@ -50,6 +51,12 @@ Importfunktionen bleiben dort als Fallback erhalten. In Production wird kein
 Modell aus `localStorage` verwendet.
 
 ## Sicherheitshinweise
+
+Bei Ladefehlern zeigt die Seite den konkreten Fehler mit „Erneut laden“ an.
+`MODEL_URL_MISSING` bedeutet, dass die URL im aktiven Deployment fehlt;
+`BLOB_AUTH_MISSING` bedeutet, dass die SDK-Zugangsdaten oder Store-Verknüpfung
+fehlen. Nach Änderungen an der Verbindung oder den Variablen neu deployen.
+Die Function protokolliert Diagnosecodes, aber keine Tokens oder privaten URLs.
 
 - Der Blob-Store muss **Private** sein, nicht Public.
 - `HOUSE_MODEL_URL` darf im Frontend stehen, weil die URL allein keinen Zugriff

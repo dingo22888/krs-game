@@ -96,7 +96,7 @@ npm run build
 npm run preview
 ```
 
-28 Tests prüfen den Modellimport und führen Rapier aus: Bewegung, Sprint,
+36 Tests prüfen den angemeldeten Blob-Abruf mit OIDC-Anfragekontext, den Modellimport und führen Rapier aus: Bewegung, Sprint,
 weiches Ducken, Kopffreiheit,
 Springen/Landung/Deckenkontakt, dünne Wände, Objekte, Türdurchgänge, Stufen,
 Bildraten sowie Startpunkte und Raum-Erreichbarkeit.
