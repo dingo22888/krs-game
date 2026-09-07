@@ -1,7 +1,9 @@
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { FloorPlan, Surface } from '../data/house.ts';
-import { buildModel } from './model.ts';
+import { buildBuilding, addBuildingColliders, origin } from './building.ts';
+import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
+import { decomposePolygon, rectanglePoints, subtractRects } from './geometry.ts';
 import type { MaterialKind } from './model.ts';
 import type { Point2 } from './geometry.ts';
 
@@ -42,7 +44,7 @@ function horizontalPolygon(points:Point2[], material:THREE.Material, y:number) {
   return mesh;
 }
 
-export function createHouseScene(plan:FloorPlan) {
+export function createHouseScene(plans:FloorPlan[]) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#bed0d8');
   scene.fog = new THREE.Fog('#bed0d8',22,70);
@@ -59,26 +61,32 @@ export function createHouseScene(plan:FloorPlan) {
     door:new THREE.MeshStandardMaterial({color:'#526168',roughness:.78}),
   };
   const unit = new THREE.BoxGeometry(1,1,1);
-  const specs = buildModel(plan);
-  for (const spec of specs) {
+  const model = buildBuilding(plans);
+  addBuildingColliders(world,model);
+  for (const spec of model.boxes) {
     const mesh = new THREE.Mesh(unit,materials[spec.material]);
     mesh.position.set(...spec.position);
     mesh.scale.set(...spec.size);
     mesh.castShadow = spec.material !== 'ceiling' && spec.material !== 'glass';
     mesh.receiveShadow = true;
     scene.add(mesh);
-    if (spec.collision) world.createCollider(RAPIER.ColliderDesc.cuboid(...spec.size.map(s=>s/2) as [number,number,number]).setTranslation(...spec.position));
+
   }
   const floorMaterials = Object.fromEntries((['wood','tile','concrete'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
-  for (const room of plan.rooms) scene.add(horizontalPolygon(room.polygon,floorMaterials[room.surface],.002));
-  const stairMaterial = new THREE.MeshStandardMaterial({color:'#525e62',roughness:.9});
-  for (const [x0,z0,x1,z1] of plan.stairZones) {
-    scene.add(horizontalPolygon([[x0,z0],[x1,z0],[x1,z1],[x0,z1]],stairMaterial,.005));
-    const positions:number[] = [];
-    for (let z=z0;z<z1;z+=.25) positions.push(x0,.007,z,x1,.007,z);
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-    scene.add(new THREE.LineSegments(geometry,new THREE.LineBasicMaterial({color:'#a9b0aa'})));
+  for(const hull of model.hulls)if(hull.visible) {
+    const points:THREE.Vector3[]=[];
+    for(let i=0;i<hull.vertices.length;i+=3)points.push(new THREE.Vector3(...hull.vertices.slice(i,i+3) as [number,number,number]));
+    const mesh=new THREE.Mesh(new ConvexGeometry(points),materials[hull.material]);
+    mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+  }
+  for(const plan of plans) {
+    const [ox,oy,oz]=origin(plan);
+    for(const room of plan.rooms)for(const rect of subtractRects(decomposePolygon(room.polygon),plan.floorHoles??[])) {
+      const mesh=horizontalPolygon(rectanglePoints(rect),floorMaterials[room.surface],oy+.002);
+      mesh.position.x=ox;mesh.position.z=oz;scene.add(mesh);
+    }
+    const fill=new THREE.PointLight('#fff0d5',22,14,2);
+    fill.position.set(ox+plan.spawn.x,oy+plan.height-.2,oz+plan.spawn.z);scene.add(fill);
   }
   scene.add(new THREE.HemisphereLight('#e6f4ff','#a2977c',2.0));
   const sunlight = new THREE.DirectionalLight('#fff2db',2.7);
@@ -90,11 +98,8 @@ export function createHouseScene(plan:FloorPlan) {
   sunlight.shadow.bias = -.00025;
   sunlight.shadow.normalBias = .025;
   scene.add(sunlight,sunlight.target);
-  const fill = new THREE.PointLight('#fff0d5',18,12,2);
-  fill.position.set(plan.id === 'dg' ? 2 : 4.9,plan.height-.18,5.7);
-  scene.add(fill);
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.MeshStandardMaterial({color:'#74806d',roughness:1}));
-  ground.rotation.x = -Math.PI/2;ground.position.y = -.2;ground.receiveShadow=true;scene.add(ground);
+  ground.rotation.x = -Math.PI/2;ground.position.y = Math.min(...plans.map(p=>p.elevation??0))-.22;ground.receiveShadow=true;scene.add(ground);
   // Exterior is a backdrop only; exit doors are closed for this indoor prototype.
   return {
     scene,world,

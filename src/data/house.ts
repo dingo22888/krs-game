@@ -6,11 +6,17 @@ export type Surface = 'wood' | 'tile' | 'concrete';
 export interface Room { name:string; polygon:Point2[]; surface:Surface }
 export interface Opening { rect:Rect; kind:'window'|'door'|'passage'; sill?:number; top?:number }
 export interface Furniture { kind:'sofa'|'table'|'counter'|'bed'|'shelf'; rect:Rect; height:number }
+export interface Staircase { to:FloorId; maxSlope?:number; steps:{polygon:Point2[];top:number;walkHeights?:number[]}[] }
+export interface RoofSlope { rect:Rect; axis:'x'|'z'; startHeight:number; endHeight:number }
 export interface FloorPlan {
   id:FloorId; name:string; height:number; footprint:Point2[]; walls:Point2[][];
   rooms:Room[]; openings:Opening[]; furniture:Furniture[]; stairZones:Rect[];
   spawn:{x:number;z:number;yaw:number};
   alternateSpawn?:{label:string;x:number;z:number;yaw:number};
+  elevation?:number; offset?:Point2;
+  floorHoles?:Rect[]; ceilingHoles?:Rect[];
+  stairs?:Staircase[]; roofs?:RoofSlope[];
+  supports?:{rect:Rect;bottom:number;top:number}[];
 }
 
 // Entirely synthetic test geometry. None of these dimensions, objects or room

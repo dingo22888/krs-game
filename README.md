@@ -9,6 +9,12 @@ lokal aus einer JSON-Datei laden. Private Grundrisse werden nicht veröffentlich
 1. Die separat bereitgestellte Hausdatei auf dem eigenen Gerät speichern.
 2. Im Spiel auf **Hausmodell laden** klicken und die JSON-Datei auswählen.
 3. Danach erscheinen KG, EG, OG und DG mit ihren eigenen Räumen und Grundrissen.
+4. Ein Modell im Format Version 2 verbindet die Geschosse über begehbare Treppen.
+   Die Etagenanzeige und Minikarte wechseln am nächsten Geschoss automatisch.
+   Die Auswahl im Menü bleibt als schneller Sprung zum Startpunkt verfügbar.
+
+Nach einer Modellaktualisierung die neue JSON-Datei erneut importieren. Ein alter
+lokal gespeicherter Modellstand wird nicht durch ein Spiel-Update überschrieben.
 
 Die Datei wird mit der Browser-Datei-API gelesen, ohne Upload oder Modellabruf
 von einem Server. Optional speichert **Auf diesem Gerät merken** das Modell im

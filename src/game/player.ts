@@ -8,6 +8,7 @@ export const PLAYER = {
 } as const;
 export interface MovementInput { forward:number; right:number; sprint:boolean; crouch:boolean; jump:boolean }
 export const idleInput = (): MovementInput => ({forward:0,right:0,sprint:false,crouch:false,jump:false});
+export interface ClimbRegion { x0:number;z0:number;x1:number;z1:number;bottom:number;top:number;maxSlope:number }
 
 export class Player {
   readonly world: RAPIER.World;
@@ -22,19 +23,23 @@ export class Player {
   private vx = 0;
   private vz = 0;
   private jumpHeld = false;
+  private climbRegions:ClimbRegion[];
 
-  constructor(world:RAPIER.World, x:number, z:number) {
+  constructor(world:RAPIER.World, x:number, z:number, elevation=0, climbRegions:ClimbRegion[]=[]) {
     this.world = world;
-    this.body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x,.03,z));
+    this.climbRegions=climbRegions;
+    this.body = world.createRigidBody(RAPIER.RigidBodyDesc.kinematicPositionBased().setTranslation(x,elevation+.03,z));
     this.collider = world.createCollider(
       RAPIER.ColliderDesc.capsule(this.height/2-PLAYER.radius,PLAYER.radius)
         .setTranslation(0,this.height/2,0).setFriction(0), this.body,
     );
     this.controller = world.createCharacterController(PLAYER.skin);
     this.controller.setSlideEnabled(true);
-    this.controller.setMaxSlopeClimbAngle(Math.PI/4);
+    this.controller.setMaxSlopeClimbAngle(56*Math.PI/180);
     this.controller.setMinSlopeSlideAngle(Math.PI/3);
-    this.controller.enableAutostep(.21,.18,false);
+    // Narrow/winding treads need a shorter clearance probe than broad landings.
+    // The capsule still has to fit, and the maximum riser remains 21 cm.
+    this.controller.enableAutostep(.21,.07,false);
     this.controller.enableSnapToGround(.18);
     world.timestep = FIXED_DT;
     world.step();
@@ -68,6 +73,11 @@ export class Player {
   }
 
   step(input:MovementInput, yaw:number, dt = FIXED_DT) {
+    const feet=this.body.translation();
+    const region=this.climbRegions.find(r=>feet.x>=r.x0&&feet.x<=r.x1&&feet.z>=r.z0&&feet.z<=r.z1&&feet.y>=r.bottom&&feet.y<=r.top);
+    const slope=region?.maxSlope??56;
+    this.controller.setMaxSlopeClimbAngle(slope*Math.PI/180);
+    this.controller.setMinSlopeSlideAngle(Math.min(89,slope+4)*Math.PI/180);
     this.updateStance(input.crouch,dt);
     const speed = this.crouched ? PLAYER.crouchSpeed : input.sprint ? PLAYER.sprintSpeed : PLAYER.walkSpeed;
     const norm = Math.max(1,Math.hypot(input.forward,input.right));

@@ -5,6 +5,7 @@ import { floors as testFloors, floorOrder } from './data/house.ts';
 import { parseHouseModel, MODEL_STORAGE_KEY, MAX_MODEL_BYTES } from './data/import-model.ts';
 import type { FloorId } from './data/house.ts';
 import { inPolygon } from './game/geometry.ts';
+import { climbRegions, connectedBuilding, floorAtPosition, localPosition, origin } from './game/building.ts';
 import { createHouseScene } from './game/scene.ts';
 import { Player, FIXED_DT, idleInput } from './game/player.ts';
 
@@ -78,11 +79,15 @@ function updateMap() {
     ctx.beginPath(); points.forEach(([x,z],i)=>{if(i===0)ctx.moveTo(ox+x*scale,oz+z*scale);else ctx.lineTo(ox+x*scale,oz+z*scale);});ctx.closePath();
   };
   path(plan.footprint);ctx.fillStyle='#29363b';ctx.fill();
-  const position = player.body.translation();
+  const position = localPosition(plan,player.body.translation());
   const room = plan.rooms.find(r=>inPolygon(position.x,position.z,r.polygon));
   if (room) {path(room.polygon);ctx.fillStyle='#3d4d46';ctx.fill();}
   ctx.fillStyle='#64726e';
   for (const f of plan.furniture) {const [x0,z0,x1,z1] = f.rect;ctx.fillRect(ox+x0*scale,oz+z0*scale,(x1-x0)*scale,(z1-z0)*scale);}
+  ctx.strokeStyle='#96bca8';ctx.lineWidth=1;
+  for(const stair of plan.stairs??[])for(const step of stair.steps){path(step.polygon);ctx.stroke();}
+  ctx.strokeStyle='#bdc9bd';ctx.setLineDash([3,3]);
+  for(const hole of plan.floorHoles??[]){const [x0,z0,x1,z1]=hole;path([[x0,z0],[x1,z0],[x1,z1],[x0,z1]]);ctx.stroke();}ctx.setLineDash([]);
   ctx.fillStyle='#c1c9bb';for(const wall of plan.walls){path(wall);ctx.fill();}
   ctx.save();ctx.translate(ox+position.x*scale,oz+position.z*scale);ctx.rotate(-yaw);
   ctx.beginPath();ctx.moveTo(0,-9);ctx.lineTo(5,5);ctx.lineTo(0,2);ctx.lineTo(-5,5);ctx.closePath();ctx.fillStyle='#d4fa72';ctx.fill();ctx.restore();
@@ -92,11 +97,12 @@ function updateMap() {
 
 function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   const plan = floors[id];
-  const nextHouse = createHouseScene(plan);
+  const nextHouse = createHouseScene(connectedBuilding(floors)?floorOrder.map(id=>floors[id]):[plan]);
+  const [ox,oy,oz]=origin(plan);
   const spawn = spawnOverride ?? plan.spawn;
   let nextPlayer:Player;
   try {
-    nextPlayer = new Player(nextHouse.world,spawn.x,spawn.z);
+    nextPlayer = new Player(nextHouse.world,spawn.x+ox,spawn.z+oz,oy,climbRegions(Object.values(floors)));
     for(let i=0;i<24;i++)nextPlayer.step(idleInput(),spawn.yaw);
   } catch(error) {nextHouse.dispose();throw error;}
   if (house) {player.dispose();house.dispose();}
@@ -108,14 +114,19 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   camera.position.set(position.x,position.y+cameraEye,position.z);
   camera.rotation.set(pitch,yaw,0,'YXZ');
   accumulator = 0;keys.clear();
-  document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.floor===id)));
-  $('floor-name').textContent=customModel?plan.name:'Testraum';$('map-floor').textContent=customModel?`${id.toUpperCase()} / GRUNDRISS`:'TESTRAUM';
-  $('alternate-spawn').hidden=!plan.alternateSpawn;
-  $('alternate-spawn').textContent=plan.alternateSpawn?.label ?? '';
+  updateFloorLabel(id);
   $('movement-state').textContent='Bereit zum Erkunden';
   $('eye-height').textContent='Augenhöhe 1,68 m';
   status.textContent=customModel?`${plan.name} geladen.`:'Lade dein Hausmodell, um die vier Etagen zu erkunden.';
   updateMap();renderDirty=true;
+}
+
+function updateFloorLabel(id:FloorId) {
+  activeFloor=id;const plan=floors[id];
+  document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.floor===id)));
+  $('floor-name').textContent=customModel?plan.name:'Testraum';$('map-floor').textContent=customModel?`${id.toUpperCase()} / GRUNDRISS`:'TESTRAUM';
+  $('alternate-spawn').hidden=!plan.alternateSpawn;
+  $('alternate-spawn').textContent=plan.alternateSpawn?.label ?? '';
 }
 
 function pause() {
@@ -140,7 +151,7 @@ function loadModel(text:string) {
   $('floor-name').textContent=floors.eg.name;$('map-floor').textContent='EG / GRUNDRISS';
   $('start-label').textContent=hasPlayed?'Weiter erkunden':'Haus betreten';
   $('intro').textContent='Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.';
-  $('model-note').textContent='Hausmodell lokal geladen. Höhen und Einrichtung vorläufig; Etagenwechsel im Menü, Treppenbereiche noch eben.';
+  $('model-note').textContent=connectedBuilding(floors)?'Hausmodell lokal geladen. Die Etagen sind über Treppen verbunden. Dachneigung und Stufenhöhen sind vorläufig angenähert.':'Älteres Hausmodell geladen: Etagenwechsel im Menü. Lade die aktualisierte Hausdatei für Treppen und Dachschrägen.';
   status.textContent='Vier unterschiedliche Etagen geladen.';
 }
 $('import-model').addEventListener('click',()=>{if(ready)$<HTMLInputElement>('model-file').click();});
@@ -156,7 +167,7 @@ $('model-file').addEventListener('change',async()=>{
 });
 $('remember-model').addEventListener('change',()=>{
   try {
-    if($<HTMLInputElement>('remember-model').checked&&customModel)localStorage.setItem(MODEL_STORAGE_KEY,JSON.stringify({format:'krs-house',version:1,floors}));
+    if($<HTMLInputElement>('remember-model').checked&&customModel)localStorage.setItem(MODEL_STORAGE_KEY,JSON.stringify({format:'krs-house',version:connectedBuilding(floors)?2:1,floors}));
     else localStorage.removeItem(MODEL_STORAGE_KEY);
   } catch {status.textContent='Dauerhaftes Speichern ist in diesem Browser nicht verfügbar.';}
 });
@@ -219,13 +230,15 @@ function animate(time:number) {
       player.step(input,yaw);accumulator-=FIXED_DT;
     }
     const pos=player.body.translation();
-    if(pos.y < -5) {setFloor(activeFloor);return;}
+    const bottom=Math.min(...Object.values(floors).map(p=>p.elevation??0))-4;
+    if(pos.y < bottom) {setFloor(activeFloor);return;}
     interpolatedPosition.set(pos.x,pos.y,pos.z).lerp(previousPosition,1-accumulator/FIXED_DT);
     cameraEye = THREE.MathUtils.lerp(previousHeight,player.height,accumulator/FIXED_DT)-.12;
     camera.position.copy(interpolatedPosition);camera.position.y+=cameraEye;
     camera.rotation.set(pitch,yaw,0,'YXZ');
     mapTimer+=dt;
     if(mapTimer>.08) {
+      if(connectedBuilding(floors)){const id=floorAtPosition(Object.values(floors),pos,activeFloor,player.grounded);if(id!==activeFloor)updateFloorLabel(id);}
       updateMap();mapTimer=0;
       $('movement-state').textContent = !player.grounded ? 'In der Luft' : player.crouched ? 'Geduckt' : player.speed>.1 ? input.sprint ? 'Schnell gehen' : 'Gehen' : 'Stehen';
       $('eye-height').textContent=`Augenhöhe ${(player.height-.12).toFixed(2).replace('.',',')} m`;

@@ -38,3 +38,14 @@ export function decomposePolygon(points: readonly Point2[]): Rect[] {
 export function rectanglePoints([x0,z0,x1,z1]: Rect): Point2[] {
   return [[x0,z0],[x1,z0],[x1,z1],[x0,z1]];
 }
+
+/** Subtract openings from slabs and their visible floor finishes alike. */
+export function subtractRects(rectangles:Rect[], holes:readonly Rect[]):Rect[] {
+  return holes.reduce((parts,hole)=>parts.flatMap(r=>{
+    const x0=Math.max(r[0],hole[0]),z0=Math.max(r[1],hole[1]);
+    const x1=Math.min(r[2],hole[2]),z1=Math.min(r[3],hole[3]);
+    if(x0>=x1||z0>=z1)return [r];
+    return [[r[0],r[1],x0,r[3]],[x1,r[1],r[2],r[3]],
+      [x0,r[1],x1,z0],[x0,z1,x1,r[3]]].filter(p=>p[2]-p[0]>.00001&&p[3]-p[1]>.00001) as Rect[];
+  }),rectangles);
+}

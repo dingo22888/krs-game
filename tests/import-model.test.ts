@@ -30,3 +30,24 @@ test('rejects invalid JSON, unbounded geometry and an outside spawn',()=>{
   data.floors.eg.height=2.6;data.floors.eg.spawn.x=99;
   assert.throws(()=>parseHouseModel(JSON.stringify(data)),/Ungültige/);
 });
+
+
+test('version 2 preserves private elevations, roofs and stair metadata',()=>{
+  const data=example();data.version=2;
+  for(const [i,id] of floorOrder.entries())Object.assign(data.floors[id],{elevation:i*3,offset:[i*.2,0],floorHoles:[],ceilingHoles:[],stairs:[],roofs:[]});
+  data.floors.og.roofs=[{rect:[0,0,2,8],axis:'x',startHeight:1,endHeight:2.6}];
+  const result=parseHouseModel(JSON.stringify(data));
+  assert.deepEqual(result.og.roofs,data.floors.og.roofs);
+  assert.equal(result.dg.elevation,9);
+  delete data.floors.dg.elevation;
+  assert.throws(()=>parseHouseModel(JSON.stringify(data)),/Ungültige/);
+});
+
+test('rejects stairs with broken destinations, oversized risers or missing headroom',()=>{
+  const data=example();data.version=2;
+  for(const [i,id] of floorOrder.entries())data.floors[id].elevation=i*3;
+  data.floors.kg.stairs=[{to:'eg',steps:[{polygon:[[1,1],[2,1],[2,2],[1,2]],top:3}]}];
+  assert.throws(()=>parseHouseModel(JSON.stringify(data)),/Ungültige/);
+  data.floors.kg.ceilingHoles=[[1,1,2,2]];data.floors.eg.floorHoles=[[1,1,2,2]];
+  assert.throws(()=>parseHouseModel(JSON.stringify(data)),/Ungültige/);
+});

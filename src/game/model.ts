@@ -1,5 +1,5 @@
 import type { FloorPlan } from '../data/house.ts';
-import { decomposePolygon } from './geometry.ts';
+import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
 
 export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door';
@@ -18,10 +18,9 @@ export function buildModel(plan:FloorPlan):BoxSpec[] {
     if (x1-x0 < .0001 || z1-z0 < .0001 || top-bottom < .0001) return;
     boxes.push({position:[(x0+x1)/2,(bottom+top)/2,(z0+z1)/2],size:[x1-x0,top-bottom,z1-z0],material,collision});
   };
-  for (const rect of decomposePolygon(plan.footprint)) {
-    add(rect,-.18,0,'floor');
-    add(rect,plan.height,plan.height+.15,'ceiling');
-  }
+  const slabs=decomposePolygon(plan.footprint);
+  for (const rect of subtractRects(slabs,plan.floorHoles??[])) add(rect,-.18,0,'floor');
+  for (const rect of subtractRects(slabs,plan.ceilingHoles??[])) add(rect,plan.height,plan.height+.02,'ceiling');
   for (const poly of plan.walls) for (const rect of decomposePolygon(poly)) add(rect,0,plan.height,'wall');
   for (const opening of plan.openings) {
     const top = Math.min(opening.top ?? 2.1,plan.height);
@@ -43,6 +42,7 @@ export function buildModel(plan:FloorPlan):BoxSpec[] {
       add(opening.rect,(opening.sill ?? .85)-.035,(opening.sill ?? .85)+.015,'cabinet');
     } else if (opening.kind === 'door') add(opening.rect,0,top,'door');
   }
+  for(const support of plan.supports??[])add(support.rect,support.bottom,support.top,'metal');
   for (const f of plan.furniture) {
     const [x0,z0,x1,z1] = f.rect;
     if (f.kind === 'table') {
