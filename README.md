@@ -6,15 +6,27 @@ lokal aus einer JSON-Datei laden. Private Grundrisse werden nicht veröffentlich
 
 ## Eigenes Haus laden
 
-1. Die separat bereitgestellte Hausdatei auf dem eigenen Gerät speichern.
-2. Im Spiel auf **Hausmodell laden** klicken und die JSON-Datei auswählen.
-3. Danach erscheinen KG, EG, OG und DG mit ihren eigenen Räumen und Grundrissen.
-4. Ein Modell im Format Version 2 verbindet die Geschosse über begehbare Treppen.
+1. Für die Vercel-Variante einmalig einen **privaten Blob-Store** anlegen und
+   `krausmansion-model.json` dort hochladen (siehe `docs/VERCEL-PRIVATE-SETUP.md`).
+2. `GAME_PASSWORD`, `GAME_AUTH_SECRET` und `HOUSE_MODEL_URL` als Vercel-
+   Umgebungsvariablen setzen. Das Passwort niemals in `VITE_*`-Variablen oder
+   in den Quellcode schreiben.
+3. Beim Öffnen erscheint die private Zugangssperre. Nach der Anmeldung lädt das
+   Spiel das Modell automatisch; die manuelle Datei-Auswahl ist dann verborgen.
+4. Danach erscheinen KG, EG, OG und DG mit ihren eigenen Räumen und Grundrissen.
+5. Ein Modell im Format Version 2 verbindet die Geschosse über begehbare Treppen.
    Die Etagenanzeige und Minikarte wechseln am nächsten Geschoss automatisch.
    Die Auswahl im Menü bleibt als schneller Sprung zum Startpunkt verfügbar.
 
-Nach einer Modellaktualisierung die neue JSON-Datei erneut importieren. Ein alter
-lokal gespeicherter Modellstand wird nicht durch ein Spiel-Update überschrieben.
+Nach einer Modellaktualisierung wird nur die private Blob-Datei ersetzt. Das
+Modell bleibt außerhalb von GitHub. Ein alter lokal gespeicherter Modellstand
+wird in der Produktionsversion nicht verwendet.
+
+Die Passwortsperre schützt den Spielstart, die Authentifizierungsroute und den
+privaten Modellabruf. Das statische Vite-Bundle kann auf Vercel Hobby weiterhin
+als öffentliche Ressource angefordert werden; wer eine vollständig unsichtbare
+Website inklusive HTML/JavaScript braucht, sollte zusätzlich Vercel Password
+Protection auf Pro oder eine vorgeschaltete Access-Lösung verwenden.
 
 Die Datei wird mit der Browser-Datei-API gelesen, ohne Upload oder Modellabruf
 von einem Server. Optional speichert **Auf diesem Gerät merken** das Modell im
@@ -32,10 +44,11 @@ Modell gibt es bewusst keine irreführende Auswahl identischer Etagen.
 | Output Directory | `dist` |
 | Install Command | `npm ci` |
 | Node.js Version | `24.x` |
-| Umgebungsvariablen | Keine |
+| Umgebungsvariablen | `GAME_PASSWORD`, `GAME_AUTH_SECRET`, `HOUSE_MODEL_URL` (Production) |
 
-`vercel.json` enthält die Build-Einstellungen. Kein Backend und keine Datenbank
-sind erforderlich. Das Deployment wird vom Eigentümer eingerichtet.
+`vercel.json` enthält die Build-Einstellungen. Der Vercel-Blob-Store wird separat
+mit dem Projekt verbunden; die drei Variablen sind für den privaten Modellabruf
+erforderlich. Das Deployment wird vom Eigentümer eingerichtet.
 
 ## Lokal
 
@@ -82,7 +95,7 @@ npm run build
 npm run preview
 ```
 
-19 Tests prüfen den Modellimport und führen Rapier aus: Bewegung, Sprint,
+28 Tests prüfen den Modellimport und führen Rapier aus: Bewegung, Sprint,
 weiches Ducken, Kopffreiheit,
 Springen/Landung/Deckenkontakt, dünne Wände, Objekte, Türdurchgänge, Stufen,
 Bildraten sowie Startpunkte und Raum-Erreichbarkeit.

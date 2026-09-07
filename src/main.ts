@@ -10,6 +10,17 @@ import { createHouseScene } from './game/scene.ts';
 import { Player, FIXED_DT, idleInput } from './game/player.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
+  <section id="auth-gate" class="auth-gate" hidden aria-labelledby="auth-title">
+    <form id="auth-form" class="auth-card">
+      <p class="eyebrow">KRS GAME <span>PRIVATER ZUGANG</span></p>
+      <h1 id="auth-title">Kraus<span>Mansion.</span></h1>
+      <p class="intro">Dieses Spiel ist nicht öffentlich freigegeben. Bitte gib das Zugangspasswort ein.</p>
+      <label class="auth-label" for="auth-password">Passwort</label>
+      <input id="auth-password" class="auth-password" type="password" autocomplete="current-password" required />
+      <button class="start" type="submit"><span>Spiel öffnen</span><span aria-hidden="true">↗</span></button>
+      <p id="auth-status" class="status" role="status"></p>
+    </form>
+  </section>
   <canvas id="game" aria-label="Begehbares 3D-Modell der KrausMansion"></canvas>
   <header class="brand"><span class="brand-mark">K.</span><div>KRAUSMANSION<span>Bewegung ausprobieren.</span></div></header>
   <div class="location"><span id="floor-name">Testraum</span><strong id="room-name">Bewegungsraum</strong></div>
@@ -34,6 +45,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const $ = <T extends HTMLElement>(id:string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('game');
+const authGate = $<HTMLElement>('auth-gate');
+const authForm = $<HTMLFormElement>('auth-form');
+const authPassword = $<HTMLInputElement>('auth-password');
+const authStatus = $('auth-status');
 const menu = $<HTMLDialogElement>('menu');
 const start = $<HTMLButtonElement>('start');
 const status = $('status');
@@ -47,6 +62,7 @@ let player:Player;
 let renderer:THREE.WebGLRenderer;
 let floors = testFloors;
 let customModel = false;
+let authenticated = false;
 let activeFloor:FloorId = 'eg';
 let yaw = floors.eg.spawn.yaw, pitch = -.04;
 let locked = false, ready = false, hasPlayed = false;
@@ -61,8 +77,39 @@ const interpolatedPosition = new THREE.Vector3();
 let cameraEye = 1.68;
 let previousHeight:number = 1.8;
 
-menu.showModal();
 menu.addEventListener('cancel',event=>event.preventDefault());
+
+function showAuthGate(message = '') {
+  authStatus.textContent = message;
+  authGate.hidden = false;
+  authPassword.focus();
+}
+
+async function checkAuthentication(): Promise<boolean> {
+  if (import.meta.env.DEV) return true;
+  try {
+    const response = await fetch('/api/auth', { credentials: 'include', cache: 'no-store' });
+    authenticated = response.ok;
+  } catch {
+    authenticated = false;
+  }
+  if (!authenticated) showAuthGate();
+  return authenticated;
+}
+
+async function loadRemoteModel(): Promise<boolean> {
+  if (import.meta.env.DEV) return true;
+  const response = await fetch('/api/house-model', { credentials: 'include', cache: 'no-store' });
+  if (response.status === 401) {
+    authenticated = false;
+    showAuthGate('Die Sitzung ist abgelaufen. Bitte erneut anmelden.');
+    return false;
+  }
+  if (!response.ok) throw new Error((await response.json().catch(() => ({})) as {error?:string}).error ?? 'Privates Hausmodell konnte nicht geladen werden.');
+  loadModel(await response.text());
+  $('model-import').hidden = true;
+  return true;
+}
 
 function updateMap() {
   const plan = floors[activeFloor];
@@ -249,15 +296,20 @@ function animate(time:number) {
 
 async function init() {
   try {
+    if (!await checkAuthentication()) return;
     if(!canvas.requestPointerLock)throw new Error('Dieser Browser unterstützt keine Maussteuerung. Bitte nutze einen Desktop-Browser mit Maus und Tastatur.');
     renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
     renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);
     renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
-    setFloor('eg');ready=true;start.disabled=false;reset.disabled=false;
+    setFloor('eg');
+    try { if (!await loadRemoteModel()) return; }
+    catch(error) { status.textContent=error instanceof Error ? error.message : 'Privates Hausmodell konnte nicht geladen werden.'; }
+    if (!menu.open) menu.showModal();
+    ready=true;start.disabled=false;reset.disabled=false;
     $<HTMLButtonElement>('import-model').disabled=false;
-    try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
+    if(import.meta.env.DEV) try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
     $('start-label').textContent=customModel?'Haus betreten':'Testraum betreten';
     status.textContent='Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
     frameId=requestAnimationFrame(animate);
@@ -279,3 +331,27 @@ window.addEventListener('pagehide',()=>{
 });
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
 void init();
+
+authForm.addEventListener('submit', async event => {
+  event.preventDefault();
+  const password = authPassword.value;
+  authPassword.disabled = true;
+  authStatus.textContent = 'Anmeldung wird geprüft …';
+  try {
+    const response = await fetch('/api/auth', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password}) });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({})) as {error?:string};
+      authStatus.textContent = data.error ?? 'Anmeldung fehlgeschlagen.';
+      authPassword.select();
+      return;
+    }
+    authenticated = true;
+    authPassword.value = '';
+    authGate.hidden = true;
+    await init();
+  } catch {
+    authStatus.textContent = 'Der Authentifizierungsdienst ist nicht erreichbar.';
+  } finally {
+    authPassword.disabled = false;
+  }
+});
