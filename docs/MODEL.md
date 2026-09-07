@@ -6,8 +6,10 @@ aus den privaten Hausgrundrissen.
 
 Das separat vorbereitete Hausmodell ist noch nicht für die Veröffentlichung in
 diesem öffentlichen Repository freigegeben. Es ist kein Bestandteil dieses
-Commits oder des daraus erzeugten Builds. Über **Hausmodell laden** kann es
-aus einer lokalen JSON-Datei benutzt werden, ohne die Geometrie hochzuladen.
+Commits oder des daraus erzeugten Builds. In Production wird es nach der
+Passwort-Anmeldung automatisch aus dem privaten Blob-Store geladen. Über
+**Erweiterte Einstellungen → Anderes JSON laden** kann optional ein lokales
+Ersatzmodell benutzt werden, ohne die Geometrie hochzuladen.
 
 Die Datei verwendet das Format `{ "format": "krs-house", "version": 2,
 "floors": { "kg": ..., "eg": ..., "og": ..., "dg": ... } }`.

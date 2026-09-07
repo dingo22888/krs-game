@@ -23,22 +23,22 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   </section>
   <canvas id="game" aria-label="Begehbares 3D-Modell der KrausMansion"></canvas>
   <header class="brand"><span class="brand-mark">K.</span><div>KRAUSMANSION<span>Bewegung ausprobieren.</span></div></header>
-  <div class="location"><span id="floor-name">Testraum</span><strong id="room-name">Bewegungsraum</strong></div>
+  <div class="location"><span id="floor-name">Hausmodell</span><strong id="room-name">Wird geladen …</strong></div>
   <div id="crosshair" aria-hidden="true"></div>
-  <aside class="map"><div class="map-caption"><span id="map-floor">TESTRAUM</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
+  <aside class="map"><div class="map-caption"><span id="map-floor">GRUNDRISS</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
   <div class="movement"><span id="movement-state">Bereit zum Erkunden</span><span class="movement-line"></span><span id="eye-height">Augenhöhe 1,68 m</span></div>
   <div class="play-help"><kbd>W A S D</kbd> Bewegen <kbd>Leertaste</kbd> Springen <kbd>Strg</kbd> Ducken <kbd>Shift</kbd> Schnell gehen <kbd>Esc</kbd> Menü</div>
   <dialog id="menu" aria-labelledby="menu-title">
     <p class="eyebrow">KRS GAME <span>ERKUNDUNG / 01</span></p>
     <h1 id="menu-title">Kraus<span>Mansion.</span></h1>
-    <p class="intro" id="intro">Bewegen, springen und ducken.<br>Teste die Steuerung im Browser.</p>
+    <p class="intro" id="intro">Das private Hausmodell wird geladen.<br>Danach kannst du alle Etagen erkunden.</p>
     <div id="floor-picker" class="floor-picker" aria-label="Etage auswählen" hidden>${floorOrder.map(id=>`<button type="button" class="floor-option" data-floor="${id}" aria-pressed="${id==='eg'}"><strong>${id.toUpperCase()}</strong><span>${({kg:'Keller',eg:'Erdgeschoss',og:'Obergeschoss',dg:'Dachgeschoss'})[id]}</span></button>`).join('')}</div>
-    <div class="model-import"><button id="import-model" type="button" disabled>Hausmodell laden</button><input id="model-file" type="file" accept=".json,application/json" hidden /><label><input id="remember-model" type="checkbox" /> Auf diesem Gerät merken</label><p>Die Datei wird nur in diesem Browser gelesen.</p></div>
-    <button type="button" class="start" id="start" disabled><span id="start-label">Testraum wird geladen …</span><span aria-hidden="true">↗</span></button>
+    <details id="advanced-settings" class="advanced-settings"><summary>Erweiterte Einstellungen</summary><div class="model-import"><button id="import-model" type="button" disabled>Anderes JSON laden</button><input id="model-file" type="file" accept=".json,application/json" hidden /><label><input id="remember-model" type="checkbox" /> Lokales Ersatzmodell merken</label><p>Optional: Die Datei wird nur in diesem Browser gelesen und ersetzt das automatisch geladene Modell für diese Sitzung.</p></div></details>
+    <button type="button" class="start" id="start" disabled><span id="start-label">Hausmodell wird geladen …</span><span aria-hidden="true">↗</span></button>
     <p id="status" class="status" role="status">3D-Modell und Bewegung werden vorbereitet.</p>
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
     <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
-    <p id="model-note" class="model-note">Noch kein Hausmodell geladen. Aktuell siehst du einen neutralen Testraum.</p>
+    <p id="model-note" class="model-note">Nach der Anmeldung wird das private Hausmodell automatisch geladen.</p>
     <p class="device-note">Zum Spielen brauchst du Maus und Tastatur.</p>
   </dialog>
 `;
@@ -107,7 +107,6 @@ async function loadRemoteModel(): Promise<boolean> {
   }
   if (!response.ok) throw new Error((await response.json().catch(() => ({})) as {error?:string}).error ?? 'Privates Hausmodell konnte nicht geladen werden.');
   loadModel(await response.text());
-  $('model-import').hidden = true;
   return true;
 }
 
@@ -198,7 +197,9 @@ function loadModel(text:string) {
   $('floor-name').textContent=floors.eg.name;$('map-floor').textContent='EG / GRUNDRISS';
   $('start-label').textContent=hasPlayed?'Weiter erkunden':'Haus betreten';
   $('intro').textContent='Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.';
-  $('model-note').textContent=connectedBuilding(floors)?'Hausmodell lokal geladen. Die Etagen sind über Treppen verbunden. Dachneigung und Stufenhöhen sind vorläufig angenähert.':'Älteres Hausmodell geladen: Etagenwechsel im Menü. Lade die aktualisierte Hausdatei für Treppen und Dachschrägen.';
+  $('model-note').textContent=connectedBuilding(floors)
+    ? (import.meta.env.DEV ? 'Hausmodell geladen. Die Etagen sind über Treppen verbunden. Dachneigung und Stufenhöhen sind vorläufig angenähert.' : 'Privates Hausmodell geladen. Die Etagen sind über Treppen verbunden.')
+    : 'Älteres Hausmodell geladen: Etagenwechsel im Menü. Lade die aktualisierte Hausdatei für Treppen und Dachschrägen.';
   status.textContent='Vier unterschiedliche Etagen geladen.';
 }
 $('import-model').addEventListener('click',()=>{if(ready)$<HTMLInputElement>('model-file').click();});
@@ -303,13 +304,13 @@ async function init() {
     renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
-    setFloor('eg');
-    try { if (!await loadRemoteModel()) return; }
-    catch(error) { status.textContent=error instanceof Error ? error.message : 'Privates Hausmodell konnte nicht geladen werden.'; }
+    if (import.meta.env.DEV) {
+      setFloor('eg');
+      try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
+    } else if (!await loadRemoteModel()) return;
     if (!menu.open) menu.showModal();
     ready=true;start.disabled=false;reset.disabled=false;
     $<HTMLButtonElement>('import-model').disabled=false;
-    if(import.meta.env.DEV) try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
     $('start-label').textContent=customModel?'Haus betreten':'Testraum betreten';
     status.textContent='Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
     frameId=requestAnimationFrame(animate);

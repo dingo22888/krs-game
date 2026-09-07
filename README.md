@@ -1,8 +1,9 @@
 # KRS Game / KrausMansion
 
 Browser-Spiel mit Ego-Steuerung, Gravitation und Kollisionen. Dieser öffentliche
-Stand enthält einen **neutralen Testraum** und kann ein privates Hausmodell
-lokal aus einer JSON-Datei laden. Private Grundrisse werden nicht veröffentlicht.
+Stand enthält einen **neutralen Testraum für die lokale Entwicklung**. In der
+Production lädt das Spiel das private Hausmodell nach der Anmeldung automatisch;
+private Grundrisse werden nicht veröffentlicht.
 
 ## Eigenes Haus laden
 
@@ -12,7 +13,8 @@ lokal aus einer JSON-Datei laden. Private Grundrisse werden nicht veröffentlich
    Umgebungsvariablen setzen. Das Passwort niemals in `VITE_*`-Variablen oder
    in den Quellcode schreiben.
 3. Beim Öffnen erscheint die private Zugangssperre. Nach der Anmeldung lädt das
-   Spiel das Modell automatisch; die manuelle Datei-Auswahl ist dann verborgen.
+   Spiel das Modell automatisch. Unter **Erweiterte Einstellungen** kann bei
+   Bedarf ein anderes JSON als Ersatzmodell ausgewählt werden.
 4. Danach erscheinen KG, EG, OG und DG mit ihren eigenen Räumen und Grundrissen.
 5. Ein Modell im Format Version 2 verbindet die Geschosse über begehbare Treppen.
    Die Etagenanzeige und Minikarte wechseln am nächsten Geschoss automatisch.
@@ -28,11 +30,10 @@ als öffentliche Ressource angefordert werden; wer eine vollständig unsichtbare
 Website inklusive HTML/JavaScript braucht, sollte zusätzlich Vercel Password
 Protection auf Pro oder eine vorgeschaltete Access-Lösung verwenden.
 
-Die Datei wird mit der Browser-Datei-API gelesen, ohne Upload oder Modellabruf
-von einem Server. Optional speichert **Auf diesem Gerät merken** das Modell im
-lokalen Browserspeicher, sodass es nach einem Neuladen wieder verfügbar ist.
-Das Deaktivieren dieser Option entfernt die gespeicherte Kopie. Ohne geladenes
-Modell gibt es bewusst keine irreführende Auswahl identischer Etagen.
+Ein optional ausgewähltes Ersatzmodell wird mit der Browser-Datei-API gelesen,
+ohne Upload. Das automatisch geladene Produktionsmodell bleibt im privaten
+Blob-Store. Ohne erfolgreich geladenes Modell startet die Production nicht mit
+einem irreführenden Testraum.
 
 ## Vercel
 
