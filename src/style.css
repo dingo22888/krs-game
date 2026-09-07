@@ -14,3 +14,17 @@ dialog{border:1px solid #d7e2ce26;box-shadow:0 30px 100px #0004;border-radius:4p
 
 [hidden]{display:none!important}.advanced-settings{margin:0 0 16px;border-top:1px solid #d4dfcf22;border-bottom:1px solid #d4dfcf22}.advanced-settings summary{cursor:pointer;padding:12px 0;color:#aebcaf;font-size:12px;list-style-position:inside}.advanced-settings summary:hover{color:var(--accent)}.model-import{padding:0 0 13px}.model-import button{display:block;width:100%;padding:10px;background:#d4fa7214;color:var(--accent);border:1px solid #d4fa7260;border-radius:2px;font-size:15px;font-weight:600}.model-import label{display:flex;align-items:center;gap:7px;margin-top:11px;font-size:13px;color:#c6d0c5}.model-import input{accent-color:var(--accent)}.model-import p{margin:8px 0 0;font-size:12px;color:#a8b6aa}
 .auth-gate{position:fixed;z-index:20;inset:0;display:grid;place-items:center;background:radial-gradient(circle at 70% 40%,#283b3acc,#081117f5 70%);padding:20px}.auth-card{width:470px;max-width:100%;padding:34px 38px 28px;border:1px solid #d7e2ce26;border-radius:4px;background:#101a1ff5;color:#eff2e9;box-shadow:0 30px 100px #0008;backdrop-filter:blur(18px)}.auth-label{display:block;margin:0 0 7px;color:#b9c8bb;font-size:12px}.auth-password{display:block;width:100%;height:47px;margin-bottom:14px;border:1px solid #d4dfcf40;border-radius:2px;background:#0a1418;color:#eff2e9;padding:0 12px;font-size:17px;letter-spacing:.08em}.auth-password:focus{border-color:var(--accent);outline:none}.auth-card .status{min-height:18px;margin-bottom:0}@media(max-width:700px){.auth-card{padding:26px 24px 23px}.auth-card h1{font-size:48px}}
+/* Discovered activity: intentionally quiet outside the workshop. */
+.boxing-hud { position:fixed;left:34px;top:125px;width:285px;padding:20px 22px;color:#f0f0e6;background:rgba(19,30,32,.88);border-left:3px solid #d4fa72;pointer-events:none;box-shadow:0 12px 40px #0002; }
+.boxing-hud[hidden] { display:none; }
+.boxing-kicker { font:10px/1.4 monospace;letter-spacing:.12em;color:#d4fa72;margin:0 0 10px; }
+.boxing-hud h2 { font-size:23px;line-height:1.15;font-weight:500;margin:0 0 17px; }
+.boxing-hud p:not(.boxing-kicker) { font-size:11px;line-height:2; }
+.boxing-hud kbd { display:inline-block;min-width:114px;font-size:10px; }
+.boxing-stats { display:flex;gap:28px;padding:15px 0 10px;border-top:1px solid #ffffff26;margin-top:16px; }
+.boxing-stats span { font:9px monospace;letter-spacing:.08em;color:#bac4bf; }
+.boxing-stats b { display:block;font:28px/1.4 sans-serif;color:#fff; }
+.boxing-feedback { min-height:36px;color:#d4fa72; }
+.boxing-hud small { font-size:10px;color:#adbab7; }
+#crosshair.hit { background:#d4fa72;box-shadow:0 0 0 5px #d4fa7250; }
+@media (max-width:900px) { .boxing-hud { left:16px;top:100px;width:235px;padding:14px; }.boxing-hud h2 { font-size:19px; } }

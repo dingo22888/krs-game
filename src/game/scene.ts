@@ -6,6 +6,9 @@ import { ConvexGeometry } from 'three/addons/geometries/ConvexGeometry.js';
 import { decomposePolygon, rectanglePoints, subtractRects } from './geometry.ts';
 import type { MaterialKind } from './model.ts';
 import type { Point2 } from './geometry.ts';
+import { prepareActivities } from './activities.ts';
+import { Boxing } from './boxing.ts';
+import { BoxingView } from './boxing-view.ts';
 
 function floorTexture(surface:Surface) {
   const canvas = document.createElement('canvas');
@@ -49,6 +52,9 @@ export function createHouseScene(plans:FloorPlan[]) {
   scene.background = new THREE.Color('#bed0d8');
   scene.fog = new THREE.Fog('#bed0d8',22,70);
   const world = new RAPIER.World({x:0,y:-18,z:0});
+  const prepared=plans.map(prepareActivities);
+  plans=prepared.map(p=>p.plan);
+  const activity=prepared.find(p=>p.boxing)?.boxing;
   const materials:Record<MaterialKind,THREE.MeshStandardMaterial> = {
     wall:new THREE.MeshStandardMaterial({color:'#e2e4dd',roughness:.91}),
     ceiling:new THREE.MeshStandardMaterial({color:'#f4f4ea',roughness:1}),
@@ -101,9 +107,13 @@ export function createHouseScene(plans:FloorPlan[]) {
   const ground = new THREE.Mesh(new THREE.PlaneGeometry(150,150),new THREE.MeshStandardMaterial({color:'#74806d',roughness:1}));
   ground.rotation.x = -Math.PI/2;ground.position.y = Math.min(...plans.map(p=>p.elevation??0))-.22;ground.receiveShadow=true;scene.add(ground);
   // Exterior is a backdrop only; exit doors are closed for this indoor prototype.
+  const boxing=activity?new Boxing(world,activity):undefined;
+  const boxingView=boxing?new BoxingView(boxing):undefined;
+  if(boxingView)scene.add(boxingView.group);
   return {
-    scene,world,
+    scene,world,boxing,boxingView,
     dispose() {
+      boxingView?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse(object => {

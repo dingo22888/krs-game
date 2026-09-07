@@ -35,6 +35,28 @@ ohne Upload. Das automatisch geladene Produktionsmodell bleibt im privaten
 Blob-Store. Ohne erfolgreich geladenes Modell startet die Production nicht mit
 einem irreführenden Testraum.
 
+## Minispiel 01: Boxtraining
+
+Im Keller wird ein Raum mit „Werkstatt“ im Namen, ersatzweise ein Heizungsraum,
+automatisch zum Trainingsraum. Seine Möbel werden beim Laden aus Darstellung,
+Kollisionen und Minikarte entfernt. Die private JSON-Datei bleibt unverändert.
+Die Position wird aus der Raumfläche mit Freiraum zu Wänden, Treppen und
+Deckenaussparungen bestimmt; es gibt keine privaten Raumkoordinaten im Code.
+
+In der Nähe des Boxsacks erscheinen die Handschuhe und die Trainingsanzeige:
+
+- Linke Maustaste: linke Faust. Rechte Maustaste: rechte Faust.
+- Auf Schlagdistanz gehen und mit der Maus zielen. Geduckt sind Körpertreffer möglich.
+- Abwechselnde Treffer innerhalb von 1,4 Sekunden erhöhen die Serie.
+- Esc pausiert das Training zusammen mit dem Spiel. Etagenwahl/Neustart setzt es zurück.
+
+Der 32-kg-Sack und seine Aufhängung werden im bestehenden Rapier-Physikmodell
+mit 120 Hz simuliert. Treffer erzeugen Impulse am Kontaktpunkt, einschließlich
+Drehmoment. Die Aufhängung nutzt zwei Kugelgelenke; Pendeln, Kollisionen und
+Dämpfung entstehen aus der Simulation. Der Sack ist ein starrer Körper ohne
+Verformung. Schläge haben begrenzte Reichweite und werden von Hindernissen
+blockiert. Es sind keine neuen Umgebungsvariablen oder Uploads notwendig.
+
 ## Vercel
 
 | Einstellung | Wert |

@@ -8,6 +8,8 @@ import { inPolygon } from './game/geometry.ts';
 import { climbRegions, connectedBuilding, floorAtPosition, localPosition, origin } from './game/building.ts';
 import { createHouseScene } from './game/scene.ts';
 import { Player, FIXED_DT, idleInput } from './game/player.ts';
+import { prepareActivities } from './game/activities.ts';
+import type { BoxingPose } from './game/boxing.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <section id="auth-gate" class="auth-gate" hidden aria-labelledby="auth-title">
@@ -25,6 +27,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <header class="brand"><span class="brand-mark">K.</span><div>KRAUSMANSION<span>Bewegung ausprobieren.</span></div></header>
   <div class="location"><span id="floor-name">Hausmodell</span><strong id="room-name">Wird geladen …</strong></div>
   <div id="crosshair" aria-hidden="true"></div>
+  <aside id="boxing-hud" class="boxing-hud" hidden aria-label="Boxtraining">
+    <p class="boxing-kicker">ENTDECKT / 01 · BOXTRAINING</p>
+    <h2>Eine Runde am Sack.</h2>
+    <p><kbd>Linke Maustaste</kbd> Linke Faust<br><kbd>Rechte Maustaste</kbd> Rechte Faust</p>
+    <div class="boxing-stats"><span>LINKS <b id="boxing-left">0</b></span><span>RECHTS <b id="boxing-right">0</b></span><span>SERIE <b id="boxing-combo">0</b></span></div>
+    <p id="boxing-feedback" class="boxing-feedback">Geh auf Schlagdistanz und ziele auf den Sack.</p>
+    <small>Links und rechts abwechseln hält die Serie.</small>
+  </aside>
   <aside class="map"><div class="map-caption"><span id="map-floor">GRUNDRISS</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
   <div class="movement"><span id="movement-state">Bereit zum Erkunden</span><span class="movement-line"></span><span id="eye-height">Augenhöhe 1,68 m</span></div>
   <div class="play-help"><kbd>W A S D</kbd> Bewegen <kbd>Leertaste</kbd> Springen <kbd>Strg</kbd> Ducken <kbd>Shift</kbd> Schnell gehen <kbd>Esc</kbd> Menü</div>
@@ -77,6 +87,11 @@ const previousPosition = new THREE.Vector3();
 const interpolatedPosition = new THREE.Vector3();
 let cameraEye = 1.68;
 let previousHeight:number = 1.8;
+const boxingHud=$('boxing-hud');
+function boxingPose():BoxingPose {
+  const p=player.body.translation();
+  return {eye:{x:p.x,y:p.y+player.height-.12,z:p.z},yaw,pitch,body:player.body};
+}
 
 menu.addEventListener('cancel',event=>event.preventDefault());
 
@@ -155,6 +170,8 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   } catch(error) {nextHouse.dispose();throw error;}
   if (house) {player.dispose();house.dispose();}
   house=nextHouse;player=nextPlayer;activeFloor=id;
+  house.boxingView?.capture();house.boxingView?.update(1);
+  boxingHud.hidden=true;
   yaw = spawn.yaw;pitch = -.04;cameraEye=1.68;
   const position = player.body.translation();
   previousHeight=player.height;
@@ -179,6 +196,8 @@ function updateFloorLabel(id:FloorId) {
 
 function pause() {
   locked=false;keys.clear();accumulator=0;player?.stop();
+  house?.boxing?.cancel();boxingHud.hidden=true;
+  $('crosshair').classList.remove('hit');
   document.body.classList.remove('playing');
   if(!menu.open)menu.showModal();
   $('menu-title').innerHTML = hasPlayed ? 'Kurze<span>Pause.</span>' : 'Kraus<span>Mansion.</span>';
@@ -190,6 +209,7 @@ function pause() {
 
 function loadModel(text:string) {
   const candidate = parseHouseModel(text);
+  candidate.kg=prepareActivities(candidate.kg).plan;
   // Replace the active dataset as a unit, then rebuild scene, physics and map.
   const previous = floors;
   floors = candidate;
@@ -241,6 +261,12 @@ document.addEventListener('mousemove',event=>{
   yaw -= event.movementX*.002*sensitivity;
   pitch = THREE.MathUtils.clamp(pitch-event.movementY*.002*sensitivity,-Math.PI/2+.025,Math.PI/2-.025);
 });
+document.addEventListener('mousedown',event=>{
+  if(!locked || (event.button!==0 && event.button!==2))return;
+  event.preventDefault();
+  house.boxing?.punch(event.button===0?'left':'right',boxingPose());
+});
+document.addEventListener('contextmenu',event=>{if(locked)event.preventDefault();});
 document.addEventListener('keydown',event=>{
   if(!locked || !controlledKeys.has(event.code))return;
   event.preventDefault();keys.add(event.code);
@@ -277,6 +303,8 @@ function animate(time:number) {
     while(accumulator>=FIXED_DT) {
       const pos=player.body.translation();previousPosition.set(pos.x,pos.y,pos.z);
       previousHeight=player.height;
+      house.boxingView?.capture();
+      house.boxing?.step(FIXED_DT,boxingPose());
       player.step(input,yaw);accumulator-=FIXED_DT;
     }
     const pos=player.body.translation();
@@ -293,7 +321,19 @@ function animate(time:number) {
       $('movement-state').textContent = !player.grounded ? 'In der Luft' : player.crouched ? 'Geduckt' : player.speed>.1 ? input.sprint ? 'Schnell gehen' : 'Gehen' : 'Stehen';
       $('eye-height').textContent=`Augenhöhe ${(player.height-.12).toFixed(2).replace('.',',')} m`;
     }
+    house.boxingView?.update(accumulator/FIXED_DT);
+    const boxing=house.boxing;
+    const training=Boolean(boxing?.nearby(boxingPose()));
+    boxingHud.hidden=!training;
+    if(training && boxing) {
+      $('boxing-left').textContent=String(boxing.hits.left);
+      $('boxing-right').textContent=String(boxing.hits.right);
+      $('boxing-combo').textContent=String(boxing.combo);
+      $('boxing-feedback').textContent=boxing.feedback || 'Geh auf Schlagdistanz und ziele auf den Sack.';
+    }
+    $('crosshair').classList.toggle('hit',training && (boxing?.flash??0)>0);
     renderer.render(house.scene,camera);
+    if(training)house.boxingView?.renderGloves(renderer,camera);
   } else if(renderDirty) {renderer.render(house.scene,camera);renderDirty=false;}
 }
 
