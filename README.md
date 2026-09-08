@@ -50,6 +50,14 @@ In der Nähe des Boxsacks erscheinen die Handschuhe und die Trainingsanzeige:
 - Abwechselnde Treffer innerhalb von 1,4 Sekunden erhöhen die Serie.
 - Esc pausiert das Training zusammen mit dem Spiel. Etagenwahl/Neustart setzt es zurück.
 
+Der Sack hängt mit seiner Oberkante etwa 1,92 m über dem Boden (bei ausreichender
+Deckenhöhe). Treffer lösen kurze Schlaggeräusche aus; nach vier schnellen
+Treffern kommen synthetisierte Anstrengungslaute hinzu. Bei 5er-Meilensteinen
+jubelt eine synthetische Menge, bei 10, 20, 30 … erklingt eine Airhorn-Fanfare.
+Lautstärke und Stummschaltung stehen im Pausenmenü und werden lokal gespeichert.
+Die Effekte werden per Web Audio im Browser erzeugt, ohne externe Audiodateien
+oder Sprachdienste. Im Menü und bei einem Tabwechsel werden sie gestoppt.
+
 Der 32-kg-Sack und seine Aufhängung werden im bestehenden Rapier-Physikmodell
 mit 120 Hz simuliert. Treffer erzeugen Impulse am Kontaktpunkt, einschließlich
 Drehmoment. Die Aufhängung nutzt zwei Kugelgelenke; Pendeln, Kollisionen und

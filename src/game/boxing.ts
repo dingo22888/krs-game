@@ -4,6 +4,7 @@ import type { BoxingLocation } from './activities.ts';
 
 export type Hand = 'left'|'right';
 export interface BoxingPose { eye:RAPIER.Vector; yaw:number; pitch:number; body:RAPIER.RigidBody }
+export interface BoxingHit { hand:Hand; combo:number; time:number }
 export const BAG = {radius:.26,height:1.1,mass:32,impulse:17,extension:.13,duration:.36} as const;
 const hands:Hand[]=['left','right'];
 const identity={x:0,y:0,z:0,w:1};
@@ -31,6 +32,7 @@ export class Boxing {
   bestCombo=0;
   feedback='';
   flash=0;
+  onHit?: (hit:BoxingHit)=>void;
   private resolved:Record<Hand,boolean>={left:false,right:false};
   private clock=0;
   private lastStart=-Infinity;
@@ -40,7 +42,7 @@ export class Boxing {
   constructor(world:RAPIER.World,location:BoxingLocation) {
     this.world=world;this.location=location;
     this.anchor=new Vector3(location.x,location.ceiling-.08,location.z);
-    const center=location.y+1.12;
+    const center=Math.min(location.y+1.37,this.anchor.y-BAG.height/2-.20);
     this.chainLength=this.anchor.y-center-BAG.height/2;
     const fixed=world.createRigidBody(RAPIER.RigidBodyDesc.fixed().setTranslation(...this.anchor.toArray() as [number,number,number]));
     const dynamic=(y:number)=>RAPIER.RigidBodyDesc.dynamic().setTranslation(location.x,y,location.z)
@@ -101,6 +103,7 @@ export class Boxing {
             this.bestCombo=Math.max(this.bestCombo,this.combo);
             this.lastHand=hand;this.lastHit=this.clock;this.flash=.16;
             this.feedback=hand==='left'?'Links · Treffer':'Rechts · Treffer';
+            this.onHit?.({hand,combo:this.combo,time:this.clock});
           } else {this.combo=0;this.feedback='Blockiert';}
         }
       }

@@ -50,7 +50,8 @@ test('activity respects world offsets, ceiling holes and supports',()=>{
 test('left/right strikes count once, drive the bag forward and generate opposite spin',()=>{
   const spins:number[]=[];
   for(const hand of ['left','right'] as Hand[]) {
-    const f=fixture();assert.ok(f.boxing.punch(hand,f.pose));
+    const f=fixture();const hits:string[]=[];f.boxing.onHit=hit=>hits.push(hit.hand);
+    assert.ok(f.boxing.punch(hand,f.pose));
     assert.equal(f.boxing.punch(hand,f.pose),false,'held/repeated click cannot stack');
     run(f,.2);
     assert.equal(f.boxing.hits[hand],1);
@@ -58,6 +59,7 @@ test('left/right strikes count once, drive the bag forward and generate opposite
     assert.ok(f.boxing.body.linvel().z<-.1);
     spins.push(f.boxing.body.angvel().y);
     run(f,.4);assert.equal(f.boxing.hits[hand],1,'one impulse per strike');
+    assert.deepEqual(hits,[hand],'one sound event per actual contact');
     f.world.free();
   }
   assert.ok(spins[0]*spins[1]<0,`expected opposing torque: ${spins}`);
@@ -66,6 +68,7 @@ test('left/right strikes count once, drive the bag forward and generate opposite
 test('misses, range, walls and paused punches cannot score',()=>{
   for(const mode of ['far','away','wall','cancel']) {
     const f=fixture();
+    let events=0;f.boxing.onHit=()=>events++;
     if(mode==='far')f.pose.eye.z=3.5;
     if(mode==='away')f.pose.yaw=Math.PI;
     f.boxing.punch('left',f.pose);
@@ -76,8 +79,16 @@ test('misses, range, walls and paused punches cannot score',()=>{
     if(mode==='cancel')f.boxing.cancel();
     run(f,.5);
     assert.equal(f.boxing.hits.left,0,mode);
+    assert.equal(events,0,`${mode} must not trigger impact sounds`);
     f.world.free();
   }
+});
+
+test('bag hangs 25 cm higher with sufficient chain and ceiling clearance',()=>{
+  const f=fixture();
+  assert.ok(Math.abs(f.boxing.body.translation().y-1.37)<.01);
+  assert.ok(Math.abs(f.boxing.chainLength-.30)<.001);
+  f.world.free();
 });
 
 test('bag remains suspended, swings back and loses energy through damping',()=>{

@@ -10,6 +10,7 @@ import { createHouseScene } from './game/scene.ts';
 import { Player, FIXED_DT, idleInput } from './game/player.ts';
 import { prepareActivities } from './game/activities.ts';
 import type { BoxingPose } from './game/boxing.ts';
+import { GameAudio } from './game/audio.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <section id="auth-gate" class="auth-gate" hidden aria-labelledby="auth-title">
@@ -48,7 +49,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <p id="status" class="status" role="status">3D-Modell und Bewegung werden vorbereitet.</p>
     <button id="retry-load" type="button" hidden>Erneut laden</button>
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
-    <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
+    <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><label for="sound-volume">Lautstärke <output id="sound-volume-value">55 %</output></label><input id="sound-volume" type="range" min="0" max="100" value="55" step="5" /><button id="sound-mute" type="button" aria-pressed="false">Ton stummschalten</button><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
     <p id="model-note" class="model-note">Nach der Anmeldung wird das private Hausmodell automatisch geladen.</p>
     <p class="device-note">Zum Spielen brauchst du Maus und Tastatur.</p>
   </dialog>
@@ -88,6 +89,16 @@ const interpolatedPosition = new THREE.Vector3();
 let cameraEye = 1.68;
 let previousHeight:number = 1.8;
 const boxingHud=$('boxing-hud');
+const gameAudio=new GameAudio();
+function updateAudioSettings() {
+  $<HTMLInputElement>('sound-volume').value=String(Math.round(gameAudio.volume*100));
+  $('sound-volume-value').textContent=`${Math.round(gameAudio.volume*100)} %`;
+  $('sound-mute').textContent=gameAudio.muted?'Ton einschalten':'Ton stummschalten';
+  $('sound-mute').setAttribute('aria-pressed',String(gameAudio.muted));
+}
+updateAudioSettings();
+$('sound-volume').addEventListener('input',event=>{gameAudio.setVolume(Number((event.target as HTMLInputElement).value)/100);updateAudioSettings();});
+$('sound-mute').addEventListener('click',()=>{gameAudio.setMuted(!gameAudio.muted);updateAudioSettings();});
 function boxingPose():BoxingPose {
   const p=player.body.translation();
   return {eye:{x:p.x,y:p.y+player.height-.12,z:p.z},yaw,pitch,body:player.body};
@@ -170,6 +181,8 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   } catch(error) {nextHouse.dispose();throw error;}
   if (house) {player.dispose();house.dispose();}
   house=nextHouse;player=nextPlayer;activeFloor=id;
+  gameAudio.reset();
+  if(house.boxing)house.boxing.onHit=hit=>gameAudio.hit(hit);
   house.boxingView?.capture();house.boxingView?.update(1);
   boxingHud.hidden=true;
   yaw = spawn.yaw;pitch = -.04;cameraEye=1.68;
@@ -195,6 +208,7 @@ function updateFloorLabel(id:FloorId) {
 }
 
 function pause() {
+  gameAudio.setPlaying(false);
   locked=false;keys.clear();accumulator=0;player?.stop();
   house?.boxing?.cancel();boxingHud.hidden=true;
   $('crosshair').classList.remove('hit');
@@ -245,6 +259,7 @@ $('alternate-spawn').addEventListener('click',()=>{const point=floors[activeFloo
 
 start.addEventListener('click',async()=>{
   if (!ready) return;
+  gameAudio.unlock();
   status.textContent = '';
   try { await canvas.requestPointerLock(); }
   catch { status.textContent='Maussteuerung konnte nicht starten. Bitte erneut klicken; öffne das Spiel gegebenenfalls direkt in einem Browser-Tab.'; }
@@ -252,6 +267,7 @@ start.addEventListener('click',async()=>{
 document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
     locked=true;hasPlayed=true;keys.clear();accumulator=0;
+    gameAudio.setPlaying(true);
     menu.close();document.body.classList.add('playing');
   } else if(ready) pause();
 });
@@ -264,6 +280,7 @@ document.addEventListener('mousemove',event=>{
 document.addEventListener('mousedown',event=>{
   if(!locked || (event.button!==0 && event.button!==2))return;
   event.preventDefault();
+  gameAudio.unlock();
   house.boxing?.punch(event.button===0?'left':'right',boxingPose());
 });
 document.addEventListener('contextmenu',event=>{if(locked)event.preventDefault();});
@@ -275,7 +292,7 @@ document.addEventListener('keyup',event=>{
   keys.delete(event.code);
   if(locked && controlledKeys.has(event.code))event.preventDefault();
 });
-function releaseInput() { keys.clear();if(document.pointerLockElement===canvas)document.exitPointerLock(); }
+function releaseInput() { keys.clear();gameAudio.setPlaying(false);if(document.pointerLockElement===canvas)document.exitPointerLock(); }
 window.addEventListener('blur',releaseInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseInput();lastTime=0;accumulator=0;});
 document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.addEventListener('click',()=>{if(ready)setFloor(button.dataset.floor as FloorId);}));
@@ -375,6 +392,7 @@ canvas.addEventListener('webglcontextlost',event=>{
 });
 window.addEventListener('pagehide',()=>{
   releaseInput();cancelAnimationFrame(frameId);
+  gameAudio.dispose();
   player?.dispose();house?.dispose();renderer?.dispose();
 });
 window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();});
