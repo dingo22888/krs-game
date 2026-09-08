@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import route from '../api/house-model.ts';
+import route, {classifyBlobError} from '../api/house-model.ts';
 import auth from '../api/auth.ts';
 import { MockAgent, getGlobalDispatcher, setGlobalDispatcher } from 'undici';
 
@@ -85,12 +85,37 @@ test('authenticated model API uses the real Blob SDK with request-context OIDC',
     const response = await route.fetch(request());
     assert.equal(response.status, 502);
     const body = await response.text();
-    assert.match(body, /BLOB_READ_FAILED/);
+    assert.match(body, /BLOB_ACCESS_DENIED/);
     assert.ok(!body.includes(oidc));
     assert.ok(!body.includes(url));
+  });
+  await t.test('transient upstream failure is retried and recovers',async()=>{
+    let attempts=0;
+    transport.get(new URL(url).origin).intercept({path:'/recover.json?cache=0',method:'GET'}).reply(()=>{
+      attempts++;return attempts===1?{statusCode:503,data:''}:{statusCode:200,data:'{"recovered":true}'};
+    }).persist();
+    process.env.HOUSE_MODEL_URL=url.replace('model.json','recover.json');
+    assert.equal((await route.fetch(request())).status,200);assert.equal(attempts,2);
+    process.env.HOUSE_MODEL_URL=url;
+  });
+  await t.test('explicit store token takes precedence over OIDC',async()=>{
+    process.env.BLOB_READ_WRITE_TOKEN='vercel_blob_rw_fixture_local-test';
+    transport.get(new URL(url).origin).intercept({path:'/token.json?cache=0',method:'GET',headers:{authorization:'Bearer vercel_blob_rw_fixture_local-test'}})
+      .reply(200,'{"token":true}');
+    process.env.HOUSE_MODEL_URL=url.replace('model.json','token.json');
+    assert.equal((await route.fetch(request())).status,200);
+    process.env.HOUSE_MODEL_URL=url;delete process.env.BLOB_READ_WRITE_TOKEN;
   });
   await t.test('oversized streams are rejected without a content-length header', async () => {
     upstream = { statusCode: 200, data: 'x'.repeat(512_001) };
     assert.equal((await route.fetch(request())).status, 413);
   });
+});
+
+test('Blob diagnostics distinguish access, limits, timeout and network without exposing details',()=>{
+  assert.equal(classifyBlobError(new Error('Vercel Blob: Failed to fetch blob: 403 Forbidden')).code,'BLOB_ACCESS_DENIED');
+  assert.equal(classifyBlobError(new Error('Vercel Blob: Failed to fetch blob: 402 Payment Required')).code,'BLOB_LIMIT_REACHED');
+  assert.equal(classifyBlobError(new DOMException('private URL','TimeoutError')).code,'BLOB_TIMEOUT');
+  assert.equal(classifyBlobError(new TypeError('fetch failed',{cause:{code:'ECONNRESET'}})).retry,true);
+  assert.ok(!JSON.stringify(classifyBlobError(new Error('secret URL and credential'))).includes('credential'));
 });

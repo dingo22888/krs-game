@@ -41,6 +41,45 @@ function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers });
 }
 
+export function classifyBlobError(error:unknown) {
+  const message=error instanceof Error?error.message:'';
+  const upstreamStatus=Number(message.match(/Failed to fetch blob: (\d{3})\b/)?.[1]) || undefined;
+  const cause=error instanceof Error?error.cause:undefined;
+  const networkCode=cause && typeof cause==='object' && 'code' in cause?String(cause.code):'';
+  if(message.includes('No blob credentials found') || message.includes('no storeId was found'))
+    return {code:'BLOB_AUTH_MISSING',status:503,retry:false,upstreamStatus,error:'Vercel-Blob-Zugriff fehlt. Store mit Production verknüpfen und neu deployen.'};
+  if(upstreamStatus===401 || upstreamStatus===403)
+    return {code:'BLOB_ACCESS_DENIED',status:502,retry:false,upstreamStatus,error:'Der private Blob-Store verweigert den Zugriff. Production-Verknüpfung und OIDC-Berechtigung prüfen. Alternativ einen gültigen BLOB_READ_WRITE_TOKEN für diesen Store in Vercel hinterlegen und neu deployen.'};
+  if(upstreamStatus===402)
+    return {code:'BLOB_LIMIT_REACHED',status:503,retry:false,upstreamStatus,error:'Vercel Blob meldet ein Nutzungs- oder Abrechnungslimit. Den Status des Stores in Vercel prüfen.'};
+  if(upstreamStatus===429)
+    return {code:'BLOB_RATE_LIMITED',status:503,retry:true,upstreamStatus,error:'Zu viele Abrufe beim Blob-Store. Bitte kurz warten und erneut laden.'};
+  if(error instanceof Error && (error.name==='TimeoutError' || error.name==='AbortError'))
+    return {code:'BLOB_TIMEOUT',status:504,retry:true,upstreamStatus,error:'Der Blob-Store antwortet zu langsam. Bitte erneut laden.'};
+  if((upstreamStatus && upstreamStatus>=500) || message==='fetch failed' ||
+    ['ECONNRESET','ETIMEDOUT','ENOTFOUND','EAI_AGAIN','UND_ERR_CONNECT_TIMEOUT','UND_ERR_SOCKET'].includes(networkCode))
+    return {code:'BLOB_UNAVAILABLE',status:502,retry:true,upstreamStatus,error:'Der Blob-Store ist vorübergehend nicht erreichbar. Bitte erneut laden.'};
+  return {code:'BLOB_READ_FAILED',status:502,retry:false,upstreamStatus,error:'Das private Hausmodell konnte nicht gelesen werden. Bitte den Fehlercode aus den Vercel-Logs prüfen.'};
+}
+
+async function readBlob(url:string) {
+  // An explicitly configured store token takes precedence over auto-detected
+  // OIDC; the SDK otherwise prefers OIDC even when both env vars are present.
+  const token=process.env.BLOB_READ_WRITE_TOKEN?.trim() || undefined;
+  for(let attempt=1;;attempt++) {
+    try {return await get(url,{access:'private',token,useCache:false,abortSignal:AbortSignal.timeout(5000)});}
+    catch(error) {
+      const diagnosis=classifyBlobError(error);
+      console.warn('[house-model] blob_read_attempt_failed',{
+        code:diagnosis.code,upstreamStatus:diagnosis.upstreamStatus,attempt,
+        authMode:token?'store-token':'oidc',hasStoreBinding:Boolean(process.env.BLOB_STORE_ID),
+      });
+      if(!diagnosis.retry || attempt>=3)throw error;
+      await new Promise(resolve=>setTimeout(resolve,attempt*250));
+    }
+  }
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     if (request.method.toUpperCase() !== 'GET') return json({ error: 'Methode nicht erlaubt.' }, 405);
@@ -62,7 +101,7 @@ export default {
       // The SDK obtains rotating OIDC credentials from Vercel's request context.
       // Do not require VERCEL_OIDC_TOKEN to exist in process.env at runtime.
       console.info('[house-model] blob_read_started');
-      const blob = await get(url, { access: 'private', useCache: false, abortSignal: AbortSignal.timeout(15000) });
+      const blob = await readBlob(url);
       if (!blob || blob.statusCode !== 200) {
         console.warn('[house-model] blob_not_found');
         return json({ code: 'MODEL_NOT_FOUND', error: 'Die Hausdatei wurde im privaten Blob-Store nicht gefunden. HOUSE_MODEL_URL prüfen.' }, 404);
@@ -97,14 +136,10 @@ export default {
         },
       });
     } catch (error) {
-      // Log diagnostic codes only: SDK error messages may contain private URLs.
-      const message = error instanceof Error ? error.message : '';
-      if (message.includes('No blob credentials found') || message.includes('no storeId was found')) {
-        console.error('[house-model] blob_credentials_missing');
-        return json({ code: 'BLOB_AUTH_MISSING', error: 'Vercel-Blob-Zugriff fehlt. Store mit Production verknüpfen, OIDC aktivieren und neu deployen.' }, 503);
-      }
-      console.error('[house-model] blob_read_failed');
-      return json({ code: 'BLOB_READ_FAILED', error: 'Der private Blob-Store konnte nicht gelesen werden. Store-Verknüpfung und Zugriffsrechte prüfen.' }, 502);
+      // Never log the SDK message, URL, credential or raw upstream response.
+      const diagnosis=classifyBlobError(error);
+      console.error('[house-model] blob_read_failed',{code:diagnosis.code,upstreamStatus:diagnosis.upstreamStatus});
+      return json({code:diagnosis.code,error:diagnosis.error},diagnosis.status);
     }
   },
 };
