@@ -91,7 +91,10 @@ Wänden werden dabei nicht geschlossen.
 Eine wiederholbar anwendbare Einrichtungsregel erkennt angrenzende Räume mit
 den Namen Esszimmer und Küche und leitet Positionen aus dem privaten Modell ab.
 Sie setzt den Esstisch auf 1,60 × 0,90 m, ergänzt vier nach innen gerichtete
-Stühle und ein um 90 Grad geöffnetes Türblatt am verbindenden Durchgang.
+Stühle und ein um 180 Grad an die Wand geöffnetes weißes Türblatt mit schwarzen
+Griffen am verbindenden Durchgang. Die westliche Esszimmeröffnung erhält links
+(vom Raum aus gesehen) eine 90 cm breite, geschlossene verglaste Balkontür und
+rechts ein Fenster mit Brüstung. Die Kombination bekommt dunkle Rahmen.
 Die nördliche äußere Küchenöffnung wird als Fenster mit 1 m Brüstung ausgeführt.
 Die Küche erhält eine wandbündige L-Zeile, zwei 2,20 m hohe Schränke und eine
 1,80 × 0,95 m große, an der Trennwand befestigte Halbinsel. Bestehende
@@ -109,8 +112,13 @@ muss nicht neu hochgeladen werden und enthält weiterhin den ursprünglichen Sta
 
 Optionale Modelldaten: Möbel unterstützen `chair` und die Blickrichtung
 `facing` (`north`, `south`, `east`, `west`). Ein Durchgang kann mit
-`leaf: {hinge: 'start' | 'end', side: -1 | 1}` ein statisch geöffnetes Türblatt
+`leaf: {hinge: 'start' | 'end', side: -1 | 1, angle?: 90 | 180}` ein statisch geöffnetes Türblatt
 erhalten. Die Scharnierposition bezieht sich auf die Längsachse der Öffnung,
 die Seite auf die positive oder negative Querachse. Darstellung und Kollision
 nutzen dasselbe Türblatt; der Durchgang bleibt frei. Diese Angaben bleiben
 beim lokalen Speichern und erneuten Import erhalten.
+Ohne `angle` bleibt der bisherige 90-Grad-Winkel erhalten. Bei 180 Grad liegt
+das Blatt neben der Öffnung an der Wand. `balcony: {side: 'start' | 'end', width: number}`
+teilt eine Fensteröffnung in eine bodentiefe Glastür und ein Brüstungsfenster.
+Die Seite bezieht sich auf die Längsachse der Öffnung; Maße der Gesamtöffnung
+bleiben erhalten. Die geschlossene Glastür besitzt eine Kollisionsfläche.

@@ -47,11 +47,17 @@ export function prepareInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId
   // Match by order-independent overlap with the normalized opening.
   if(connecting) {
     const original=eg.openings.find(o=>o.kind==='passage'&&o.rect[0]<connecting.rect[2]&&o.rect[2]>connecting.rect[0]&&o.rect[1]<connecting.rect[3]&&o.rect[3]>connecting.rect[1]);
-    if(original)original.leaf={hinge:'end',side:-1};
+    if(original)original.leaf={hinge:'end',side:-1,angle:180};
   }
   for(const opening of eg.openings) {
     // An exterior opening on the kitchen's north wall is glazing.
     const r=opening.rect;
+    // Looking out through the dining room's west wall, the left-hand bay is
+    // the south/end portion. Preserve the entire original opening and its sill
+    // metadata; the renderer splits only the glazing and the lower masonry.
+    if(opening.kind==='window'&&Math.abs(r[2]-d[0])<.15&&r[1]>d[1]&&r[3]<d[3]&&r[3]-r[1]>1.8) {
+      opening.balcony={side:'end',width:.9};
+    }
     if(opening.kind==='door'&&r[0]>=k[0]&&r[2]<=k[2]&&Math.abs(r[3]-k[1])<.15) {
       opening.kind='window';opening.sill=1;delete opening.leaf;
     }

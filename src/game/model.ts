@@ -3,7 +3,7 @@ import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
 import { wallLayout } from './wall-layout.ts';
 
-export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door';
+export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware';
 export interface BoxSpec {
   position:[number,number,number];
   size:[number,number,number];
@@ -27,7 +27,33 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
   for (const opening of layout.openings) {
     const top = Math.min(opening.top ?? 2.1,plan.height);
     add(opening.rect,top,plan.height,'wall');
-    if (opening.kind === 'window') {
+    if(opening.kind==='window'&&opening.balcony) {
+      const r=opening.rect,along=r[2]-r[0]>r[3]-r[1]?0:1,across=1-along;
+      const width=Math.min(opening.balcony.width,r[along+2]-r[along]-.3);
+      const split=opening.balcony.side==='end'?r[along+2]-width:r[along]+width;
+      const door=[...r] as Rect,window=[...r] as Rect;
+      if(opening.balcony.side==='end'){door[along]=split;window[along+2]=split;}else{door[along+2]=split;window[along]=split;}
+      const sill=opening.sill??.85,center=(r[across]+r[across+2])/2;
+      add(window,0,sill,'wall');
+      for(const [bay,bottom] of [[door,.025],[window,sill]] as [Rect,number][]) {
+        const panel=[...bay] as Rect;
+        panel[across]=center-.02;panel[across+2]=center+.02;
+        panel[along]+=.05;panel[along+2]-=.05;
+        add(panel,bottom+.06,top-.06,'glass');
+        const frame=[...bay] as Rect;frame[across]=center-.04;frame[across+2]=center+.04;
+        add(frame,bottom,bottom+.06,'windowFrame');add(frame,top-.06,top,'windowFrame');
+        for(const end of [bay[along],bay[along+2]-.05]) {
+          const upright=[...frame] as Rect;upright[along]=end;upright[along+2]=end+.05;
+          add(upright,bottom,top,'windowFrame');
+        }
+      }
+      // Closed balcony leaf: full-height glazing, threshold and a dark handle.
+      const handle=[...door] as Rect;
+      handle[along]=split+(opening.balcony.side==='end'?.06:-.08);handle[along+2]=handle[along]+.02;
+      handle[across]=center+.045;handle[across+2]=center+.08;
+      add(handle,1,1.14,'hardware',false);
+      add(window,sill-.025,sill+.015,'cabinet');
+    } else if (opening.kind === 'window') {
       add(opening.rect,0,opening.sill ?? .85,'wall');
       const [x0,z0,x1,z1] = opening.rect;
       const horizontal = x1-x0 > z1-z0;
@@ -53,7 +79,13 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
       leaf[along+2]=leaf[along]+.045;
       leaf[across]=side===1?wallFace:wallFace-length;
       leaf[across+2]=side===1?wallFace+length:wallFace;
-      add(leaf,.015,top-.025,'door');
+      if(opening.leaf.angle===180) {
+        leaf[along]=hinge==='end'?pivot:pivot-length;
+        leaf[along+2]=leaf[along]+length;
+        leaf[across]=side===1?wallFace+.008:wallFace-.053;
+        leaf[across+2]=leaf[across]+.045;
+      }
+      add(leaf,.015,top-.025,'interiorDoor');
       // Narrow jambs and a head frame make the open leaf legible as a door.
       for(const end of [r[along],r[along+2]-.025]) {
         const jamb=[...r] as Rect;jamb[along]=end;jamb[along+2]=end+.025;
@@ -61,10 +93,12 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
       }
       add(r,top-.025,top,'cabinet');
       const handle=[...leaf] as Rect;
-      const tip=side===1?leaf[across+2]-.12:leaf[across]+.12;
-      handle[across]=tip-.055;handle[across+2]=tip+.055;
-      handle[along]-=.025;handle[along+2]+=.025;
-      add(handle,1.01,1.035,'metal',false);
+      const handleAxis=opening.leaf.angle===180?along:across,normal=1-handleAxis;
+      const positiveTip=opening.leaf.angle===180?hinge==='end':side===1;
+      const tip=positiveTip?leaf[handleAxis+2]-.12:leaf[handleAxis]+.12;
+      handle[handleAxis]=tip-.055;handle[handleAxis+2]=tip+.055;
+      handle[normal]-=.025;handle[normal+2]+=.025;
+      add(handle,1.01,1.035,'hardware',false);
     }
   }
   for(const support of plan.supports??[])add(support.rect,support.bottom,support.top,'metal');

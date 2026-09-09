@@ -51,7 +51,12 @@ export function parseHouseModel(text:string):Record<FloorId,FloorPlan> {
       id,name:label(f.name),height:number(f.height,1.85,6),
       footprint:polygon(f.footprint),walls:list(f.walls,100,polygon),
       rooms:list(f.rooms,60,v=>{const r=object(v);return {name:label(r.name),polygon:polygon(r.polygon),surface:oneOf<Surface>(r.surface,['wood','tile','concrete'])};}),
-      openings:list(f.openings,100,v=>{const o=object(v);const opening:Opening={kind:oneOf<Opening['kind']>(o.kind,['window','door','passage']),rect:rect(o.rect),sill:o.sill===undefined?undefined:number(o.sill,0,5),top:o.top===undefined?undefined:number(o.top,.5,6)};if(o.leaf!==undefined){const leaf=object(o.leaf);if(leaf.side!==-1&&leaf.side!==1)fail();opening.leaf={hinge:oneOf(leaf.hinge,['start','end']),side:leaf.side};}return opening;}),
+      openings:list(f.openings,100,v=>{
+        const o=object(v);const opening:Opening={kind:oneOf<Opening['kind']>(o.kind,['window','door','passage']),rect:rect(o.rect),sill:o.sill===undefined?undefined:number(o.sill,0,5),top:o.top===undefined?undefined:number(o.top,.5,6)};
+        if(o.leaf!==undefined){const leaf=object(o.leaf);if(leaf.side!==-1&&leaf.side!==1)fail();opening.leaf={hinge:oneOf(leaf.hinge,['start','end']),side:leaf.side};if(leaf.angle!==undefined){if(leaf.angle!==90&&leaf.angle!==180)fail();opening.leaf.angle=leaf.angle;}}
+        if(o.balcony!==undefined){const b=object(o.balcony);if(opening.kind!=='window')fail();const width=number(b.width,.5,2);if(width>=Math.max(opening.rect[2]-opening.rect[0],opening.rect[3]-opening.rect[1])-.3)fail();opening.balcony={side:oneOf(b.side,['start','end']),width};}
+        return opening;
+      }),
       furniture:list(f.furniture,100,v=>{const item=object(v);return {kind:oneOf<Furniture['kind']>(item.kind,['sofa','table','counter','bed','shelf','chair']),rect:rect(item.rect),height:number(item.height,.15,5),facing:item.facing===undefined?undefined:oneOf<Furniture['facing'] & string>(item.facing,['north','south','east','west'])};}),
       stairZones:list(f.stairZones,20,rect),spawn:spawn(f.spawn),
     };

@@ -66,6 +66,9 @@ export function createHouseScene(plans:FloorPlan[]) {
     glass:new THREE.MeshStandardMaterial({color:'#9dcbd6',transparent:true,opacity:.3,roughness:.25,metalness:.12}),
     cabinet:new THREE.MeshStandardMaterial({color:'#edece4',roughness:.66}),
     door:new THREE.MeshStandardMaterial({color:'#526168',roughness:.78}),
+    interiorDoor:new THREE.MeshStandardMaterial({color:'#faf9f5',roughness:.6}),
+    windowFrame:new THREE.MeshStandardMaterial({color:'#202427',roughness:.65}),
+    hardware:new THREE.MeshStandardMaterial({color:'#101112',metalness:.3,roughness:.5}),
   };
   const model = buildBuilding(plans);
   addBuildingColliders(world,model);

@@ -1,5 +1,6 @@
-import {test} from 'node:test';
+import {test,before} from 'node:test';
 import assert from 'node:assert/strict';
+import RAPIER from '@dimforge/rapier3d-compat';
 import {floors} from '../src/data/house.ts';
 import {rectanglePoints as polygon} from '../src/game/geometry.ts';
 import {prepareInteriors} from '../src/game/interiors.ts';
@@ -7,6 +8,9 @@ import {parseHouseModel} from '../src/data/import-model.ts';
 import {buildModel} from '../src/game/model.ts';
 import {buildBuilding} from '../src/game/building.ts';
 import {wallLayout} from '../src/game/wall-layout.ts';
+import {Player,idleInput,FIXED_DT} from '../src/game/player.ts';
+
+before(async()=>{await RAPIER.init();});
 
 function fixture() {
   const copy=structuredClone(floors);
@@ -29,7 +33,7 @@ test('interiors retain source data, are repeatable, and survive saved model impo
   assert.deepEqual(prepareInteriors(result),result);
   const loaded=parseHouseModel(JSON.stringify({format:'krs-house',version:2,floors:result}));
   assert.equal(loaded.eg.furniture.filter(f=>f.kind==='chair').length,4);
-  assert.deepEqual(loaded.eg.openings[0].leaf,{hinge:'end',side:-1});
+  assert.deepEqual(loaded.eg.openings[0].leaf,{hinge:'end',side:-1,angle:180});
   assert.equal(loaded.eg.furniture.find(f=>f.kind==='chair')?.facing,'east');
   assert.equal(result.og.roofs![0].startHeight,1);assert.equal(result.og.roofs![0].endHeight,2.35);
   for(const id of ['kg','eg','og','dg'] as const) {
@@ -43,7 +47,7 @@ test('table is 1.60 by .90 with four inward chairs; door leaf is beside a traver
   assert.ok(Math.abs(table.rect[3]-table.rect[1]-1.6)<1e-9);
   assert.ok(Math.abs(table.rect[2]-table.rect[0]-.9)<1e-9);
   assert.equal(eg.furniture.filter(f=>f.kind==='chair').length,4);
-  const boxes=buildModel(eg),door=boxes.find(b=>b.material==='door')!;
+  const boxes=buildModel(eg),door=boxes.find(b=>b.material==='interiorDoor')!;
   assert.ok(door.position[0]+door.size[0]/2<=4.8);
   assert.ok(!boxes.some(b=>b.collision&&Math.abs(b.position[0]-4.9)<b.size[0]/2&&Math.abs(b.position[2]-3.15)<b.size[2]/2&&Math.abs(b.position[1]-1)<b.size[1]/2));
   const glass=boxes.find(b=>b.material==='glass')!;
@@ -90,4 +94,35 @@ test('bounded shaft recess is completed once and declared openings are protected
   assert.ok(solid(result));assert.deepEqual(prepareInteriors(result),result);
   source.eg.openings.push({kind:'window',rect:[4.6,5.3,4.8,5.5]});
   assert.ok(!solid(prepareInteriors(source)));
+});
+
+test('180 degree leaf leaves the wall-side aisle and both directions through the doorway walkable',()=>{
+  const eg=prepareInteriors(fixture()).eg;
+  for(const route of [{x:4.3,z:2,yaw:Math.PI,axis:'z',target:4},{x:4.3,z:3.15,yaw:-Math.PI/2,axis:'x',target:5.5},{x:5.7,z:3.15,yaw:Math.PI/2,axis:'x',target:4.5}]) {
+    const world=new RAPIER.World({x:0,y:-18,z:0});
+    try {
+      for(const b of buildModel(eg))if(b.collision)world.createCollider(RAPIER.ColliderDesc.cuboid(b.size[0]/2,b.size[1]/2,b.size[2]/2).setTranslation(...b.position));
+      const player=new Player(world,route.x,route.z);
+      for(let i=0;i<Math.ceil(1.05/FIXED_DT);i++)player.step({...idleInput(),forward:1},route.yaw);
+      const pos=player.body.translation(),coordinate=route.axis==='x'?pos.x:pos.z;
+      assert.ok(route.yaw===Math.PI/2?coordinate<route.target:coordinate>route.target,`blocked route ${JSON.stringify(route)} at ${coordinate}`);
+    }finally{world.free();}
+  }
+});
+
+test('balcony bay has floor-height glass and dark frames while the adjacent window keeps its sill',()=>{
+  const source=fixture();source.eg.openings.push({kind:'window',rect:[0,1,.2,4],sill:.8,top:2.1});
+  const prepared=prepareInteriors(source);
+  const loaded=parseHouseModel(JSON.stringify({format:'krs-house',version:2,floors:prepared}));
+  assert.deepEqual(loaded.eg.openings.at(-1)!.balcony,{side:'end',width:.9});
+  assert.deepEqual(prepareInteriors(prepared),prepared);
+  const boxes=buildModel(loaded.eg);
+  const covers=(b:typeof boxes[number],x:number,y:number,z:number)=>b.collision&&Math.abs(b.position[0]-x)<b.size[0]/2&&Math.abs(b.position[1]-y)<b.size[1]/2&&Math.abs(b.position[2]-z)<b.size[2]/2;
+  assert.ok(boxes.some(b=>b.material==='glass'&&covers(b,.1,.4,3.6)));
+  assert.ok(!boxes.some(b=>b.material==='wall'&&covers(b,.1,.4,3.6)));
+  assert.ok(boxes.some(b=>b.material==='wall'&&covers(b,.1,.4,2)));
+  assert.ok(boxes.some(b=>b.material==='windowFrame'&&b.position[1]<.1));
+  assert.ok(boxes.some(b=>b.material==='hardware'));
+  const broken=structuredClone(loaded);broken.eg.openings.at(-1)!.balcony!.width=9;
+  assert.throws(()=>parseHouseModel(JSON.stringify({format:'krs-house',version:2,floors:broken})),/Ungültige/);
 });
