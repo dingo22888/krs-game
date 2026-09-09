@@ -66,7 +66,29 @@ export function wallLayout(plan: FloorPlan) {
     // Do not collapse an intentionally small declared opening.
     if (rect[2] - rect[0] < .075 || rect[3] - rect[1] < .075) return {...opening, rect: [...original] as Rect};
     return {...opening, rect};
-  }).filter(opening => {
+  });
+  // Close short unfinished T junctions, not arbitrary gaps between parallel
+  // walls. The receiving wall must cover the full thickness of the wall end.
+  // Declared openings are protected even if narrower than the join tolerance.
+  const joins:Rect[]=[];
+  for(const w of walls) for(const along of [0,1]) {
+    const across=1-along, thickness=w[across+2]-w[across];
+    if(thickness<.075 || thickness>.65 || w[along+2]-w[along]<.4)continue;
+    for(const direction of [-1,1]) {
+      const end=w[along+(direction===1?2:0)];
+      const candidates=walls.filter(v=>v!==w && v[across]<=w[across]+EPS && v[across+2]>=w[across+2]-EPS && v[across+2]-v[across]>thickness+.08 && v[along+2]-v[along]<=.65)
+        .map(v=>({v,gap:direction===1?v[along]-end:end-v[along+2]}))
+        .filter(c=>c.gap>EPS&&c.gap<=.15+EPS).sort((a,b)=>a.gap-b.gap);
+      const target=candidates[0];if(!target)continue;
+      const bridge=[...w] as Rect;
+      bridge[along]=direction===1?end:end-target.gap;
+      bridge[along+2]=direction===1?end+target.gap:end;
+      if(openings.some(o=>o.rect[0]<bridge[2]&&o.rect[2]>bridge[0]&&o.rect[1]<bridge[3]&&o.rect[3]>bridge[1]))continue;
+      joins.push(bridge);
+    }
+  }
+  walls.push(...joins);
+  const retainedOpenings=openings.filter(opening => {
     if (opening.kind !== 'passage') return true;
     const r = opening.rect, along = r[2] - r[0] >= r[3] - r[1] ? 0 : 1, across = 1 - along;
     const jamb = (end: number, direction: number) => walls.some(w => {
@@ -82,5 +104,5 @@ export function wallLayout(plan: FloorPlan) {
   });
   // Declared openings take precedence over filled PDF contours, also when the
   // window was drawn on top of a continuous wall in the original plan.
-  return {walls: subtractRects(walls, openings.map(o => o.rect)), openings};
+  return {walls: subtractRects(walls, retainedOpenings.map(o => o.rect)), openings:retainedOpenings};
 }

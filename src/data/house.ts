@@ -4,8 +4,8 @@ import type { Point2, Rect } from '../game/geometry.ts';
 export type FloorId = 'kg' | 'eg' | 'og' | 'dg';
 export type Surface = 'wood' | 'tile' | 'concrete';
 export interface Room { name:string; polygon:Point2[]; surface:Surface }
-export interface Opening { rect:Rect; kind:'window'|'door'|'passage'; sill?:number; top?:number }
-export interface Furniture { kind:'sofa'|'table'|'counter'|'bed'|'shelf'; rect:Rect; height:number }
+export interface Opening { rect:Rect; kind:'window'|'door'|'passage'; sill?:number; top?:number; leaf?:{hinge:'start'|'end';side:-1|1} }
+export interface Furniture { kind:'sofa'|'table'|'counter'|'bed'|'shelf'|'chair'; rect:Rect; height:number; facing?:'north'|'south'|'east'|'west' }
 export interface Staircase { to:FloorId; maxSlope?:number; steps:{polygon:Point2[];top:number;walkHeights?:number[]}[] }
 export interface RoofSlope { rect:Rect; axis:'x'|'z'; startHeight:number; endHeight:number }
 export interface FloorPlan {

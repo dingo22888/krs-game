@@ -9,6 +9,7 @@ import { climbRegions, connectedBuilding, floorAtPosition, localPosition, origin
 import { createHouseScene } from './game/scene.ts';
 import { Player, FIXED_DT, idleInput } from './game/player.ts';
 import { prepareActivities } from './game/activities.ts';
+import { prepareInteriors } from './game/interiors.ts';
 import type { BoxingPose } from './game/boxing.ts';
 import { GameAudio } from './game/audio.ts';
 
@@ -222,7 +223,7 @@ function pause() {
 
 
 function loadModel(text:string) {
-  const candidate = parseHouseModel(text);
+  const candidate = prepareInteriors(parseHouseModel(text));
   candidate.kg=prepareActivities(candidate.kg).plan;
   // Replace the active dataset as a unit, then rebuild scene, physics and map.
   const previous = floors;

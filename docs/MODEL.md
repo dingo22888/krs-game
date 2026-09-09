@@ -80,3 +80,37 @@ gerendert, um Flackern durch überlappende Flächen zu vermeiden. Transparente
 Scheiben bleiben für die Sortierung getrennt. Die Originaldatei, Etagenversätze,
 Treppen, Stützen, Dachschrägen und Möbelmaße werden nicht umgeschrieben. Die
 Minimap zeigt weiterhin die ursprünglichen Planlinien als Orientierung.
+
+Kurze unvollständige T-Anschlüsse können bis zu 15 cm zur gegenüberliegenden
+Wandfläche geschlossen werden. Die empfangende Wand muss die gesamte Stärke
+des Wandendes abdecken. Deklarierte Öffnungen und Abstände zwischen parallelen
+Wänden werden dabei nicht geschlossen.
+
+## Einrichtung beim Laden
+
+Eine wiederholbar anwendbare Einrichtungsregel erkennt angrenzende Räume mit
+den Namen Esszimmer und Küche und leitet Positionen aus dem privaten Modell ab.
+Sie setzt den Esstisch auf 1,60 × 0,90 m, ergänzt vier nach innen gerichtete
+Stühle und ein um 90 Grad geöffnetes Türblatt am verbindenden Durchgang.
+Die nördliche äußere Küchenöffnung wird als Fenster mit 1 m Brüstung ausgeführt.
+Die Küche erhält eine wandbündige L-Zeile, zwei 2,20 m hohe Schränke und eine
+1,80 × 0,95 m große, an der Trennwand befestigte Halbinsel. Bestehende
+Küchenmöbel werden ersetzt; erneutes Laden erzeugt keine Duplikate.
+Eine kleine ausgesparte Schachtverbindung am Ende der Esszimmertrennwand wird
+zwischen vorhandener Querwand und Rückwand ergänzt (höchstens 50 cm breit und
+80 cm tief). Deklarierte Öffnungen bleiben auch dabei geschützt.
+
+Bei diesem Modell werden bisherige Höhen von 2,30 m auf 2,35 m angehoben.
+Hohe Anschlüsse der Dachschrägen folgen der Decke, niedrige Kniestöcke und
+Treppenhöhen bleiben erhalten. Die obere Bodenplatte wird auf den verfügbaren
+Zwischenraum begrenzt, damit sie nicht in die lichte Raumhöhe hineinragt.
+Diese Ergänzungen geschehen nach dem Import im Speicher; die private Blob-Datei
+muss nicht neu hochgeladen werden und enthält weiterhin den ursprünglichen Stand.
+
+Optionale Modelldaten: Möbel unterstützen `chair` und die Blickrichtung
+`facing` (`north`, `south`, `east`, `west`). Ein Durchgang kann mit
+`leaf: {hinge: 'start' | 'end', side: -1 | 1}` ein statisch geöffnetes Türblatt
+erhalten. Die Scharnierposition bezieht sich auf die Längsachse der Öffnung,
+die Seite auf die positive oder negative Querachse. Darstellung und Kollision
+nutzen dasselbe Türblatt; der Durchgang bleibt frei. Diese Angaben bleiben
+beim lokalen Speichern und erneuten Import erhalten.

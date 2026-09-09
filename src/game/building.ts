@@ -38,7 +38,10 @@ export function buildBuilding(plans:FloorPlan[]):{boxes:BoxSpec[];hulls:HullSpec
   const boxes:BoxSpec[]=[],hulls:HullSpec[]=[];
   for(const plan of plans) {
     const [ox,oy,oz]=origin(plan);
-    boxes.push(...buildModel(plan).map(b=>({...b,position:[b.position[0]+ox,b.position[1]+oy,b.position[2]+oz] as [number,number,number]})));
+    const below=plan.elevation===undefined?undefined:plans.filter(p=>p.elevation!==undefined&&p.elevation<plan.elevation!).sort((a,b)=>b.elevation!-a.elevation!)[0];
+    // A higher clear ceiling must not be obscured by the next floor's slab.
+    const slabThickness=below?Math.max(.02,Math.min(.18,oy-below.elevation!-below.height-.02)):.18;
+    boxes.push(...buildModel(plan,slabThickness).map(b=>({...b,position:[b.position[0]+ox,b.position[1]+oy,b.position[2]+oz] as [number,number,number]})));
     const prism=(points:Point2[],bottom:(p:Point2,i:number)=>number,top:(p:Point2,i:number)=>number,material:MaterialKind,visible=true,collision=true)=>{
       const vertices=[...points.map((p,i)=>[p[0]+ox,bottom(p,i)+oy,p[1]+oz]),...points.map((p,i)=>[p[0]+ox,top(p,i)+oy,p[1]+oz])].flat();
       hulls.push({vertices,material,visible,collision});
