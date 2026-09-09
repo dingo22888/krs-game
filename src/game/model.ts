@@ -1,6 +1,7 @@
 import type { FloorPlan } from '../data/house.ts';
 import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
+import { wallLayout } from './wall-layout.ts';
 
 export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door';
 export interface BoxSpec {
@@ -21,8 +22,9 @@ export function buildModel(plan:FloorPlan):BoxSpec[] {
   const slabs=decomposePolygon(plan.footprint);
   for (const rect of subtractRects(slabs,plan.floorHoles??[])) add(rect,-.18,0,'floor');
   for (const rect of subtractRects(slabs,plan.ceilingHoles??[])) add(rect,plan.height,plan.height+.02,'ceiling');
-  for (const poly of plan.walls) for (const rect of decomposePolygon(poly)) add(rect,0,plan.height,'wall');
-  for (const opening of plan.openings) {
+  const layout = wallLayout(plan);
+  for (const rect of layout.walls) add(rect,0,plan.height,'wall');
+  for (const opening of layout.openings) {
     const top = Math.min(opening.top ?? 2.1,plan.height);
     add(opening.rect,top,plan.height,'wall');
     if (opening.kind === 'window') {

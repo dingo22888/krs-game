@@ -58,3 +58,25 @@ Boden und Deckenschicht ergeben bei entsprechendem Geschossabstand einen
 zusammenhängenden Aufbau ohne deckungsgleiche sichtbare Flächen. Die Höhe der
 Etagenanzeige bezieht sich auf die Füße; während eines Sprungs erfolgt kein
 Etagenwechsel. Maße und Näherungen werden vom privaten Modell vorgegeben.
+
+## Toleranz bei gezeichneten Wandanschlüssen
+
+Beim Aufbau werden Wandflächen innerhalb einer Etage normalisiert. Eine Gruppe
+nahe beieinanderliegender Kanten darf höchstens 6 cm überspannen; die stärkste
+vorhandene Wandkante dient als Bezug. Dünne solide Wände werden nicht entfernt.
+Öffnungsenden können bis zu 10 cm an vorhandene Kanten anschließen. Die Tiefe
+einer Öffnung wird an einen benachbarten Wandstreifen angepasst (maximal 18 cm
+Abweichung je Tiefenkante). Fenster und Türen schneiden die gefüllten Konturen
+aus; Brüstungen, Stürze und Glasscheiben werden danach passend ergänzt.
+
+Ein Durchgangseintrag, der zu mindestens 80 Prozent auf einem massiven Wandende
+liegt und keine gegenüberliegende Laibung besitzt, wird als widersprüchliche
+Annotation ausgelassen. Dabei bleibt die vorhandene Wand erhalten; es wird kein
+neuer Ausgang erzeugt. Dies ist keine Rekonstruktion fehlender Architektur.
+
+Die bereinigten Volumen bestimmen Darstellung und Kollision. Bei deckenden
+Quadern desselben Materials werden verdeckte und doppelte Oberflächen nicht
+gerendert, um Flackern durch überlappende Flächen zu vermeiden. Transparente
+Scheiben bleiben für die Sortierung getrennt. Die Originaldatei, Etagenversätze,
+Treppen, Stützen, Dachschrägen und Möbelmaße werden nicht umgeschrieben. Die
+Minimap zeigt weiterhin die ursprünglichen Planlinien als Orientierung.

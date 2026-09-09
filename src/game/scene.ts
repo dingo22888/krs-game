@@ -9,6 +9,7 @@ import type { Point2 } from './geometry.ts';
 import { prepareActivities } from './activities.ts';
 import { Boxing } from './boxing.ts';
 import { BoxingView } from './boxing-view.ts';
+import { boxSurfacePositions } from './box-surfaces.ts';
 
 function floorTexture(surface:Surface) {
   const canvas = document.createElement('canvas');
@@ -66,17 +67,23 @@ export function createHouseScene(plans:FloorPlan[]) {
     cabinet:new THREE.MeshStandardMaterial({color:'#edece4',roughness:.66}),
     door:new THREE.MeshStandardMaterial({color:'#526168',roughness:.78}),
   };
-  const unit = new THREE.BoxGeometry(1,1,1);
   const model = buildBuilding(plans);
   addBuildingColliders(world,model);
-  for (const spec of model.boxes) {
-    const mesh = new THREE.Mesh(unit,materials[spec.material]);
-    mesh.position.set(...spec.position);
-    mesh.scale.set(...spec.size);
-    mesh.castShadow = spec.material !== 'ceiling' && spec.material !== 'glass';
-    mesh.receiveShadow = true;
-    scene.add(mesh);
-
+  for (const kind of Object.keys(materials) as MaterialKind[]) {
+    const specs = model.boxes.filter(b => b.material === kind);
+    if (!specs.length) continue;
+    // Transparent panes stay separate for sorting; opaque objects share only
+    // their exposed surfaces, including adjoining sofa and cabinet pieces.
+    const groups = kind === 'glass' ? specs.map(b => [b]) : [specs];
+    for (const group of groups) {
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute('position', new THREE.BufferAttribute(boxSurfacePositions(group), 3));
+      geometry.computeVertexNormals();
+      const mesh = new THREE.Mesh(geometry,materials[kind]);
+      mesh.castShadow = kind !== 'ceiling' && kind !== 'glass';
+      mesh.receiveShadow = true;
+      scene.add(mesh);
+    }
   }
   const floorMaterials = Object.fromEntries((['wood','tile','concrete'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
   for(const hull of model.hulls)if(hull.visible) {
