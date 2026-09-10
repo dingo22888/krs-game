@@ -15,7 +15,7 @@ function floorTexture(surface:Surface) {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 256;
   const ctx = canvas.getContext('2d')!;
-  ctx.fillStyle = surface === 'wood' ? '#997a57' : surface === 'tile' ? '#969da0' : '#888d8e';
+  ctx.fillStyle = surface === 'wood' ? '#997a57' : surface === 'tile' ? '#969da0' : surface==='stone'?'#a1998a':surface==='carpet'?'#aaa8a3':'#888d8e';
   ctx.fillRect(0,0,256,256);
   if (surface === 'wood') {
     for (let i=0;i<8;i++) {
@@ -26,6 +26,16 @@ function floorTexture(surface:Surface) {
       ctx.fillStyle = '#b09371';
       for (let j=0;j<7;j++) ctx.fillRect(i*32+3+j*4,12+j*19,1,70);
     }
+  } else if(surface==='carpet'||surface==='stone') {
+    // Deterministic fine grain; one repeating texture, no external photo assets.
+    let seed=739;
+    for(let i=0;i<18000;i++){
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;const x=(seed>>>16)&255;
+      seed=(Math.imul(seed,1664525)+1013904223)>>>0;const y=(seed>>>16)&255;
+      ctx.fillStyle=i%2?'rgba(255,255,255,.09)':'rgba(40,36,30,.07)';
+      ctx.fillRect(x,y,surface==='carpet'?2:5,1);
+    }
+    if(surface==='stone'){ctx.strokeStyle='#888174';ctx.lineWidth=1;ctx.strokeRect(.5,.5,255,255);}
   } else if (surface === 'tile') {
     ctx.strokeStyle = '#717b7e'; ctx.lineWidth = 1.5;
     ctx.strokeRect(.75,.75,254.5,254.5);
@@ -72,11 +82,16 @@ export function createHouseScene(plans:FloorPlan[]) {
     rug:new THREE.MeshStandardMaterial({color:'#b6b0a4',roughness:1}),
     screen:new THREE.MeshStandardMaterial({color:'#101a20',metalness:.25,roughness:.22}),
     hardware:new THREE.MeshStandardMaterial({color:'#101112',metalness:.3,roughness:.5}),
+    ceramic:new THREE.MeshStandardMaterial({color:'#f4f4f0',roughness:.22}),
+    bathTile:new THREE.MeshStandardMaterial({color:'#a49b89',roughness:.8}),
+    bedding:new THREE.MeshStandardMaterial({color:'#9ba48a',roughness:1}),
+    linen:new THREE.MeshStandardMaterial({color:'#bcb6a9',roughness:1}),
+    mirror:new THREE.MeshStandardMaterial({color:'#aebbc0',metalness:.8,roughness:.18}),
   };
   const model = buildBuilding(plans);
   addBuildingColliders(world,model);
   for (const kind of Object.keys(materials) as MaterialKind[]) {
-    const specs = model.boxes.filter(b => b.material === kind);
+    const specs = model.boxes.filter(b => b.material === kind&&!b.shape);
     if (!specs.length) continue;
     // Transparent panes stay separate for sorting; opaque objects share only
     // their exposed surfaces, including adjoining sofa and cabinet pieces.
@@ -91,7 +106,15 @@ export function createHouseScene(plans:FloorPlan[]) {
       scene.add(mesh);
     }
   }
-  const floorMaterials = Object.fromEntries((['wood','tile','concrete'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
+  for(const spec of model.boxes.filter(b=>b.shape)) {
+    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(.5,.5,1,40);
+    if(spec.shape==='ovalX')geometry.rotateZ(Math.PI/2);
+    if(spec.shape==='ovalZ')geometry.rotateX(Math.PI/2);
+    const mesh=new THREE.Mesh(geometry,materials[spec.material]);
+    mesh.position.set(...spec.position);mesh.scale.set(...spec.size);
+    mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
+  }
+  const floorMaterials = Object.fromEntries((['wood','tile','concrete','carpet','stone'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
   for(const hull of model.hulls)if(hull.visible) {
     const points:THREE.Vector3[]=[];
     for(let i=0;i<hull.vertices.length;i+=3)points.push(new THREE.Vector3(...hull.vertices.slice(i,i+3) as [number,number,number]));

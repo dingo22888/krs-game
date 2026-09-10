@@ -22,15 +22,17 @@ export function prepareDormers(input:Record<FloorId,FloorPlan>):Record<FloorId,F
   // inner face. Retain the imported pitch, and anchor its height at exactly 2 m.
   const pitch=(roof.startHeight-roof.endHeight)/(roof.rect[2]-roof.rect[0]);
   const heightLine=bed[2]-(bed[2]-bed[0])*.2;
-  roof.rect[0]=heightLine-(og.height-2)/pitch;
-  roof.startHeight=og.height;
-  roof.endHeight=2-(roof.rect[2]-heightLine)*pitch;
+  if(Math.abs(roof.startHeight-pitch*(heightLine-roof.rect[0])-2)>1e-8) {
+    roof.rect[0]=heightLine-(og.height-2)/pitch;
+    roof.startHeight=og.height;
+    roof.endHeight=2-(roof.rect[2]-heightLine)*pitch;
+  }
   // The dormer starts at the bedroom side window and continues across both
   // bathroom windows to the room's south wall. A horizontal ceiling remains
   // above the cutout.
   const start=eastWindow.rect[1],end=bath[3];
   const cutout:Rect=[roof.rect[0],start,roof.rect[2],end];
-  roof.cutouts=[...(roof.cutouts??[]).filter(r=>!(r[1]===start&&Math.abs(r[3]-end)<1e-8)),cutout];
+  roof.cutouts=[...(roof.cutouts??[]).filter(r=>!(Math.abs(r[1]-start)<1e-8&&r[3]>bath[1])),cutout];
   // The earlier import contains the lower bathroom window. Add the matching
   // upper sash shown on the plan once; on later passes the pair is retained.
   if(bathWindows.length===1) {

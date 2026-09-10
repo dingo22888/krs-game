@@ -130,4 +130,25 @@ Alle Fenster erhalten umlaufende anthrazitfarbene Rahmen; breite Fenster zusätz
 
 Das Wohnzimmer wird beim Laden anhand der Raum- und Sofageometrie ergänzt: dunkle Polster, ein heller Teppich unter der Couch, ein Sessel neben dem Fenster und ein 65-Zoll-TV (16:9, etwa 1,439 × 0,809 m) an der gegenüberliegenden Wand. Der Teppich liegt oberhalb des Bodenbelags und erzeugt kein Hindernis. Das private Quellmodell und Fotos bleiben außerhalb des Repositorys.
 
-Im Obergeschoss wird die Dachgeometrie an den markierten Gauben korrigiert. Das rechte Schlafzimmerfenster und die beiden Badfenster liegen in einem ausgesparten Dachbereich mit waagerechter Decke; die gestrichelte 2-m-Linie bleibt die Grenze der übrigen Dachschräge. Die Aussparung wird auch in die Dachkollision übernommen, sodass die Kopfhöhe im Dormer-Bereich stimmt.
+Im Obergeschoss wird die Dachgeometrie an den markierten Gauben korrigiert. Das rechte Schlafzimmerfenster und die beiden Badfenster liegen in einem ausgesparten Dachbereich mit waagerechter Decke. Die gestrichelte Linie bezeichnet 2 m lichte Höhe innerhalb der übrigen Dachschräge. Die Aussparung wird auch in die Dachkollision übernommen.
+
+## Bad und Schlafzimmer nach Fotovorlage
+
+Die Einrichtung wird relativ zu den importierten Raumgrenzen aufgebaut. Im Bad
+wird der bestätigte Außenwandstreifen vollständig ergänzt und nur für die beiden
+Fenster ausgeschnitten. Dadurch bleiben Mittelsteg, Brüstungen und Stürze geschlossen
+und kollidierbar. Die weißen Innenrahmen folgen der Fotovorlage; neben der Gaube
+bleibt die Schräge erhalten.
+
+Wanne mit schwarzer Dusche und Fliesenrückwand, kompakter Waschtisch mit Holzplatte,
+WC, runder Spiegel und Heizkörper ersetzen die fehlende Badeinrichtung. Das
+Schlafzimmer erhält ein zur Schräge ausgerichtetes Bett, zwei Nachttische,
+Spiegelschrank, Kommoden, TV gegenüber dem Bett und grauen Teppichboden. Die
+Gegenstände sind vereinfachte Modelle; Spiegel zeigen keine Echtzeitreflexion.
+Fotos und private Modellkoordinaten werden nicht mit veröffentlicht.
+
+Zusätzliche Möbeltypen sind in `furnitureKinds` definiert. `facing` richtet
+Darstellung und Kollision gemeinsam aus, `bottom` erlaubt wandmontierte Objekte.
+`carpet` und `stone` sind weitere Bodenoberflächen. Fenster können über
+`frame: 'white' | 'anthracite'` eine abweichende Rahmenfarbe erhalten. Die Regeln
+sind wiederholbar und bleiben beim Speichern und erneuten JSON-Import stabil.

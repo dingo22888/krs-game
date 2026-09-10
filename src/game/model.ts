@@ -2,13 +2,15 @@ import type { FloorPlan } from '../data/house.ts';
 import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
 import { wallLayout } from './wall-layout.ts';
+import { furnitureDetails } from './furniture-details.ts';
 
-export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen';
+export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen'|'ceramic'|'bathTile'|'bedding'|'linen'|'mirror';
 export interface BoxSpec {
   position:[number,number,number];
   size:[number,number,number];
   material:MaterialKind;
   collision:boolean;
+  shape?:'ellipsoid'|'ovalX'|'ovalY'|'ovalZ';
 }
 
 /** One geometry description drives the visible model AND the collision world. */
@@ -55,14 +57,15 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
       add(window,sill-.025,sill+.015,'cabinet');
     } else if (opening.kind === 'window') {
       const r=opening.rect,sill=opening.sill??.85;
+      const frameMaterial=opening.frame==='white'?'interiorDoor':'windowFrame';
       add(r,0,sill,'wall');
       const along=r[2]-r[0]>r[3]-r[1]?0:1,across=1-along,center=(r[across]+r[across+2])/2;
       const frame=[...r] as Rect;frame[across]=center-.04;frame[across+2]=center+.04;
       const rail=Math.min(.055,(r[along+2]-r[along])/5,(top-sill)/5);
-      add(frame,sill,sill+rail,'windowFrame');add(frame,top-rail,top,'windowFrame');
+      add(frame,sill,sill+rail,frameMaterial);add(frame,top-rail,top,frameMaterial);
       for(const end of [r[along],r[along+2]-rail]) {
         const jamb=[...frame] as Rect;jamb[along]=end;jamb[along+2]=end+rail;
-        add(jamb,sill,top,'windowFrame');
+        add(jamb,sill,top,frameMaterial);
       }
       const pane=[...frame] as Rect;pane[along]+=rail;pane[along+2]-=rail;
       pane[across]=center-.018;pane[across+2]=center+.018;
@@ -70,7 +73,7 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
       if(r[along+2]-r[along]>1.2) {
         const mullion=[...frame] as Rect;const mid=(r[along]+r[along+2])/2;
         mullion[along]=mid-.025;mullion[along+2]=mid+.025;
-        add(mullion,sill+rail,top-rail,'windowFrame');
+        add(mullion,sill+rail,top-rail,frameMaterial);
       }
       add(r,sill-.035,sill,'cabinet');
     } else if (opening.kind === 'door') add(opening.rect,0,top,'door');
@@ -108,6 +111,8 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
   }
   for(const support of plan.supports??[])add(support.rect,support.bottom,support.top,'metal');
   for (const f of plan.furniture) {
+    const detailed=furnitureDetails(f);
+    if(detailed){boxes.push(...detailed);continue;}
     const [x0,z0,x1,z1] = f.rect;
     if(f.kind==='rug') {
       add(f.rect,.004,f.height,'rug',false);
