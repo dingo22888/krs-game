@@ -71,7 +71,7 @@ export function parseHouseModel(text:string):Record<FloorId,FloorPlan> {
       if(!steps.length)fail();return {to:oneOf(s.to,floorOrder),maxSlope:s.maxSlope===undefined?undefined:number(s.maxSlope,30,82),steps};
     });
     if(f.supports!==undefined)plan.supports=list(f.supports,100,v=>{const s=object(v),bottom=number(s.bottom,-.2,6),top=number(s.top,.1,6);if(top<=bottom)fail();return {rect:rect(s.rect),bottom,top};});
-    if(f.roofs!==undefined)plan.roofs=list(f.roofs,12,v=>{const r=object(v);return {rect:rect(r.rect),axis:oneOf(r.axis,['x','z'] as const),startHeight:number(r.startHeight,.3,plan.height),endHeight:number(r.endHeight,.3,plan.height)};});
+    if(f.roofs!==undefined)plan.roofs=list(f.roofs,12,v=>{const r=object(v);return {rect:rect(r.rect),axis:oneOf(r.axis,['x','z'] as const),startHeight:number(r.startHeight,.3,plan.height),endHeight:number(r.endHeight,.3,plan.height),...(r.cutouts===undefined?{}:{cutouts:list(r.cutouts,20,rect)})};});
     if(root.version===2&&plan.elevation===undefined)fail();
     result[id]=plan;
   }

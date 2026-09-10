@@ -129,3 +129,5 @@ bleiben erhalten. Die geschlossene Glastür besitzt eine Kollisionsfläche.
 Alle Fenster erhalten umlaufende anthrazitfarbene Rahmen; breite Fenster zusätzlich einen Mittelpfosten. Fensterbänke bleiben hell und das Glas bleibt geschlossen und kollidierbar.
 
 Das Wohnzimmer wird beim Laden anhand der Raum- und Sofageometrie ergänzt: dunkle Polster, ein heller Teppich unter der Couch, ein Sessel neben dem Fenster und ein 65-Zoll-TV (16:9, etwa 1,439 × 0,809 m) an der gegenüberliegenden Wand. Der Teppich liegt oberhalb des Bodenbelags und erzeugt kein Hindernis. Das private Quellmodell und Fotos bleiben außerhalb des Repositorys.
+
+Im Obergeschoss wird die Dachgeometrie an den markierten Gauben korrigiert. Das rechte Schlafzimmerfenster und die beiden Badfenster liegen in einem ausgesparten Dachbereich mit waagerechter Decke; die gestrichelte 2-m-Linie bleibt die Grenze der übrigen Dachschräge. Die Aussparung wird auch in die Dachkollision übernommen, sodass die Kopfhöhe im Dormer-Bereich stimmt.

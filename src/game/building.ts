@@ -55,7 +55,7 @@ export function buildBuilding(plans:FloorPlan[]):{boxes:BoxSpec[];hulls:HullSpec
     for(const roof of plan.roofs??[]) {
       const axis=roof.axis==='x'?0:1;
       const underside=(p:Point2)=>roof.startHeight+(roof.endHeight-roof.startHeight)*(p[axis]-roof.rect[axis])/(roof.rect[axis+2]-roof.rect[axis]);
-      for(const rect of subtractRects([roof.rect],plan.ceilingHoles??[])) {
+      for(const rect of subtractRects([roof.rect],[...(plan.ceilingHoles??[]),...(roof.cutouts??[])])) {
         prism(rectanglePoints(rect),underside,()=>plan.height+.02,'ceiling');
       }
     }

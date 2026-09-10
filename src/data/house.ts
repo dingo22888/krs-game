@@ -7,7 +7,7 @@ export interface Room { name:string; polygon:Point2[]; surface:Surface }
 export interface Opening { rect:Rect; kind:'window'|'door'|'passage'; sill?:number; top?:number; leaf?:{hinge:'start'|'end';side:-1|1;angle?:90|180}; balcony?:{side:'start'|'end';width:number} }
 export interface Furniture { kind:'sofa'|'table'|'counter'|'bed'|'shelf'|'chair'|'rug'|'armchair'|'tv'; rect:Rect; height:number; facing?:'north'|'south'|'east'|'west' }
 export interface Staircase { to:FloorId; maxSlope?:number; steps:{polygon:Point2[];top:number;walkHeights?:number[]}[] }
-export interface RoofSlope { rect:Rect; axis:'x'|'z'; startHeight:number; endHeight:number }
+export interface RoofSlope { rect:Rect; axis:'x'|'z'; startHeight:number; endHeight:number; cutouts?:Rect[] }
 export interface FloorPlan {
   id:FloorId; name:string; height:number; footprint:Point2[]; walls:Point2[][];
   rooms:Room[]; openings:Opening[]; furniture:Furniture[]; stairZones:Rect[];
