@@ -12,6 +12,8 @@ import { prepareActivities } from './game/activities.ts';
 import { prepareInteriors } from './game/interiors.ts';
 import type { BoxingPose } from './game/boxing.ts';
 import { GameAudio } from './game/audio.ts';
+import { TouchControls,useTouch } from './game/touch-input.ts';
+import type {InputMode} from './game/touch-input.ts';
 
 document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <section id="auth-gate" class="auth-gate" hidden aria-labelledby="auth-title">
@@ -40,10 +42,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <aside class="map"><div class="map-caption"><span id="map-floor">GRUNDRISS</span><span>1 m</span></div><canvas id="map" role="img" aria-label="Grundriss mit deiner Position"></canvas></aside>
   <div class="movement"><span id="movement-state">Bereit zum Erkunden</span><span class="movement-line"></span><span id="eye-height">Augenhöhe 1,68 m</span></div>
   <div class="play-help"><kbd>W A S D</kbd> Bewegen <kbd>Leertaste</kbd> Springen <kbd>Strg</kbd> Ducken <kbd>Shift</kbd> Schnell gehen <kbd>Esc</kbd> Menü</div>
+  <div id="touch-controls" hidden aria-label="Touch-Steuerung">
+    <div class="touch-look" data-touch="look" aria-label="Zum Umsehen wischen"><span>Wischen zum Umsehen</span></div>
+    <div class="touch-stick" data-touch="move" aria-label="Joystick zum Bewegen"><span class="stick-knob"></span><small>BEWEGEN · AUSSEN SCHNELL</small></div>
+    <div class="touch-actions"><button type="button" data-touch="crouch" aria-pressed="false">Ducken</button><button type="button" data-touch="jump">Springen</button></div>
+    <div class="touch-fists" hidden><button type="button" data-touch="left" aria-label="Linke Faust">Faust L</button><button type="button" data-touch="right" aria-label="Rechte Faust">Faust R</button></div>
+    <div class="touch-toolbar"><button id="toggle-map" type="button" aria-pressed="false">Karte</button><button id="touch-pause" type="button">Pause</button></div>
+  </div>
   <dialog id="menu" aria-labelledby="menu-title">
     <p class="eyebrow">KRS GAME <span>ERKUNDUNG / 01</span></p>
     <h1 id="menu-title">Kraus<span>Mansion.</span></h1>
     <p class="intro" id="intro">Das private Hausmodell wird geladen.<br>Danach kannst du alle Etagen erkunden.</p>
+    <p id="rotate-hint" hidden role="status">Bitte drehe dein Gerät ins Querformat. Danach kannst du weiterspielen.</p>
     <div id="floor-picker" class="floor-picker" aria-label="Etage auswählen" hidden>${floorOrder.map(id=>`<button type="button" class="floor-option" data-floor="${id}" aria-pressed="${id==='eg'}"><strong>${id.toUpperCase()}</strong><span>${({kg:'Keller',eg:'Erdgeschoss',og:'Obergeschoss',dg:'Dachgeschoss'})[id]}</span></button>`).join('')}</div>
     <details id="advanced-settings" class="advanced-settings"><summary>Erweiterte Einstellungen</summary><div class="model-import"><button id="import-model" type="button" disabled>Anderes JSON laden</button><input id="model-file" type="file" accept=".json,application/json" hidden /><label><input id="remember-model" type="checkbox" /> Lokales Ersatzmodell merken</label><p>Optional: Die Datei wird nur in diesem Browser gelesen und ersetzt das automatisch geladene Modell für diese Sitzung.</p></div></details>
     <button type="button" class="start" id="start" disabled><span id="start-label">Hausmodell wird geladen …</span><span aria-hidden="true">↗</span></button>
@@ -52,7 +62,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
     <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><label for="sound-volume">Lautstärke <output id="sound-volume-value">55 %</output></label><input id="sound-volume" type="range" min="0" max="100" value="55" step="5" /><button id="sound-mute" type="button" aria-pressed="false">Ton stummschalten</button><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
     <p id="model-note" class="model-note">Nach der Anmeldung wird das private Hausmodell automatisch geladen.</p>
-    <p class="device-note">Zum Spielen brauchst du Maus und Tastatur.</p>
+    <fieldset class="input-settings"><legend>Steuerung</legend>
+      <label for="input-mode">Eingabe</label><select id="input-mode"><option value="auto">Automatisch</option><option value="touch">Touch / Joystick</option><option value="mouse">Maus / Tastatur</option></select>
+      <label for="touch-sensitivity">Touch-Empfindlichkeit</label><input id="touch-sensitivity" type="range" min="0.5" max="2" value="1" step="0.1" />
+      <label for="touch-size">Touch-Tasten</label><select id="touch-size"><option value="normal">Normal</option><option value="large">Groß</option></select>
+      <label for="graphics-mode">Grafik</label><select id="graphics-mode"><option value="auto">Automatisch</option><option value="mobile">Sparsam</option><option value="high">Hohe Qualität</option></select>
+      <button id="fullscreen" type="button" hidden>Vollbild</button>
+    </fieldset>
+    <p class="device-note">Links bewegen, rechts umsehen. Joystick außen: schnell gehen. Ducken antippen: an/aus.</p>
   </dialog>
 `;
 
@@ -78,7 +95,17 @@ let customModel = false;
 let authenticated = false;
 let activeFloor:FloorId = 'eg';
 let yaw = floors.eg.spawn.yaw, pitch = -.04;
-let locked = false, ready = false, hasPlayed = false;
+let playing = false, ready = false, hasPlayed = false;
+let mouseStartPending=false;
+const coarsePointer=matchMedia('(pointer: coarse)');
+function savedSetting(key:string,fallback:string) {try{return localStorage.getItem(`krs-game.${key}`)??fallback;}catch{return fallback;}}
+function saveSetting(key:string,value:string) {try{localStorage.setItem(`krs-game.${key}`,value);}catch{/* Settings are optional when storage is blocked. */}}
+let inputMode=savedSetting('input-mode','auto') as InputMode;
+if(!['auto','touch','mouse'].includes(inputMode))inputMode='auto';
+let touchMode=useTouch(inputMode,coarsePointer.matches,Boolean(canvas.requestPointerLock));
+let touchSensitivity=Math.max(.5,Math.min(2,Number(savedSetting('touch-sensitivity','1'))||1));
+let graphicsMode=savedSetting('graphics-mode','auto');
+if(!['auto','mobile','high'].includes(graphicsMode))graphicsMode='auto';
 let sensitivity = 1;
 let accumulator = 0, lastTime = 0, mapTimer = 0;
 let frameId = 0;
@@ -91,6 +118,33 @@ let cameraEye = 1.68;
 let previousHeight:number = 1.8;
 const boxingHud=$('boxing-hud');
 const gameAudio=new GameAudio();
+const touch=new TouchControls($('touch-controls'),(dx,dy)=>{
+  if(!playing||!touchMode)return;
+  const scale=3/Math.max(320,innerHeight)*touchSensitivity;
+  yaw-=dx*scale;pitch=THREE.MathUtils.clamp(pitch-dy*scale,-Math.PI/2+.025,Math.PI/2-.025);
+},hand=>{if(playing&&touchMode){gameAudio.unlock();house.boxing?.punch(hand,boxingPose());}});
+const portrait=()=>touchMode&&innerHeight>innerWidth;
+function controlHint() {return touchMode?'Links bewegen · rechts wischen · Joystick außen: schnell gehen.':'Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';}
+function updateInputUI() {
+  document.body.classList.toggle('touch-mode',touchMode);
+  $('rotate-hint').hidden=!portrait();
+  start.disabled=!ready||portrait();
+  touch.setEnabled(playing&&touchMode);
+  $<HTMLSelectElement>('input-mode').value=inputMode;
+}
+function applyGraphics() {
+  if(!renderer)return;
+  const low=graphicsMode==='mobile'||(graphicsMode==='auto'&&touchMode);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,low?1.25:1.75));
+  renderer.shadowMap.enabled=!low;
+  renderer.setSize(innerWidth,innerHeight);renderDirty=true;
+}
+$<HTMLInputElement>('touch-sensitivity').value=String(touchSensitivity);
+$<HTMLSelectElement>('graphics-mode').value=graphicsMode;
+const largeButtons=savedSetting('touch-size','normal')==='large';
+document.body.classList.toggle('large-touch',largeButtons);
+$<HTMLSelectElement>('touch-size').value=largeButtons?'large':'normal';
+updateInputUI();
 function updateAudioSettings() {
   $<HTMLInputElement>('sound-volume').value=String(Math.round(gameAudio.volume*100));
   $('sound-volume-value').textContent=`${Math.round(gameAudio.volume*100)} %`;
@@ -192,7 +246,7 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   previousPosition.set(position.x,position.y,position.z);
   camera.position.set(position.x,position.y+cameraEye,position.z);
   camera.rotation.set(pitch,yaw,0,'YXZ');
-  accumulator = 0;keys.clear();
+  accumulator = 0;keys.clear();touch.reset();
   updateFloorLabel(id);
   $('movement-state').textContent='Bereit zum Erkunden';
   $('eye-height').textContent='Augenhöhe 1,68 m';
@@ -210,7 +264,8 @@ function updateFloorLabel(id:FloorId) {
 
 function pause() {
   gameAudio.setPlaying(false);
-  locked=false;keys.clear();accumulator=0;player?.stop();
+  playing=false;mouseStartPending=false;keys.clear();touch.setEnabled(false);accumulator=0;player?.stop();
+  if(document.pointerLockElement===canvas)document.exitPointerLock();
   house?.boxing?.cancel();boxingHud.hidden=true;
   $('crosshair').classList.remove('hit');
   document.body.classList.remove('playing');
@@ -218,7 +273,8 @@ function pause() {
   $('menu-title').innerHTML = hasPlayed ? 'Kurze<span>Pause.</span>' : 'Kraus<span>Mansion.</span>';
   $('intro').textContent = customModel ? 'Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.' : 'Lade dein Hausmodell oder probiere die Bewegung im Testraum aus.';
   $('start-label').textContent = hasPlayed ? 'Weiter erkunden' : customModel ? 'Haus betreten' : 'Testraum betreten';
-  status.textContent = 'Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
+  status.textContent = controlHint();
+  updateInputUI();
 }
 
 
@@ -259,59 +315,93 @@ $('remember-model').addEventListener('change',()=>{
 $('alternate-spawn').addEventListener('click',()=>{const point=floors[activeFloor].alternateSpawn;if(ready&&point)setFloor(activeFloor,point);});
 
 start.addEventListener('click',async()=>{
-  if (!ready) return;
+  if (!ready||portrait()) return;
   gameAudio.unlock();
   status.textContent = '';
+  if(touchMode){beginPlay();return;}
+  if(!canvas.requestPointerLock){status.textContent='Maussteuerung ist hier nicht verfügbar. Wähle unten „Touch / Joystick“.';return;}
+  mouseStartPending=true;
   try { await canvas.requestPointerLock(); }
-  catch { status.textContent='Maussteuerung konnte nicht starten. Bitte erneut klicken; öffne das Spiel gegebenenfalls direkt in einem Browser-Tab.'; }
+  catch {mouseStartPending=false;status.textContent='Maussteuerung konnte nicht starten. Bitte erneut klicken oder „Touch / Joystick“ auswählen.';}
 });
+start.addEventListener('pointerdown',event=>{
+  if(inputMode==='auto'&&event.pointerType==='touch'){touchMode=true;updateInputUI();applyGraphics();}
+});
+function beginPlay() {
+  playing=true;mouseStartPending=false;hasPlayed=true;keys.clear();touch.reset();accumulator=0;lastTime=0;
+  gameAudio.setPlaying(true);
+  if(menu.open)menu.close();document.body.classList.add('playing');updateInputUI();
+}
 document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
-    locked=true;hasPlayed=true;keys.clear();accumulator=0;
-    gameAudio.setPlaying(true);
-    menu.close();document.body.classList.add('playing');
-  } else if(ready) pause();
+    if(mouseStartPending&&ready&&!touchMode&&!document.hidden)beginPlay();
+    else if(!playing||touchMode)document.exitPointerLock();
+  } else if(playing&&!touchMode) pause();
 });
-document.addEventListener('pointerlockerror',()=>{status.textContent='Maussteuerung wurde vom Browser abgelehnt. Öffne das Spiel direkt und klicke erneut auf „Testraum betreten“.';});
+document.addEventListener('pointerlockerror',()=>{mouseStartPending=false;status.textContent='Maussteuerung wurde vom Browser abgelehnt. Klicke erneut auf Spielen oder wähle „Touch / Joystick“.';});
 document.addEventListener('mousemove',event=>{
-  if(!locked)return;
+  if(!playing||touchMode||document.pointerLockElement!==canvas)return;
   yaw -= event.movementX*.002*sensitivity;
   pitch = THREE.MathUtils.clamp(pitch-event.movementY*.002*sensitivity,-Math.PI/2+.025,Math.PI/2-.025);
 });
 document.addEventListener('mousedown',event=>{
-  if(!locked || (event.button!==0 && event.button!==2))return;
+  if(!playing||touchMode||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
   event.preventDefault();
   gameAudio.unlock();
   house.boxing?.punch(event.button===0?'left':'right',boxingPose());
 });
-document.addEventListener('contextmenu',event=>{if(locked)event.preventDefault();});
+canvas.addEventListener('contextmenu',event=>{if(playing)event.preventDefault();});
 document.addEventListener('keydown',event=>{
-  if(!locked || !controlledKeys.has(event.code))return;
+  if(playing&&event.code==='Escape'){event.preventDefault();pause();return;}
+  if(!playing||touchMode || !controlledKeys.has(event.code))return;
   event.preventDefault();keys.add(event.code);
 });
 document.addEventListener('keyup',event=>{
   keys.delete(event.code);
-  if(locked && controlledKeys.has(event.code))event.preventDefault();
+  if(playing && controlledKeys.has(event.code))event.preventDefault();
 });
-function releaseInput() { keys.clear();gameAudio.setPlaying(false);if(document.pointerLockElement===canvas)document.exitPointerLock(); }
+function releaseInput() {keys.clear();touch.reset();mouseStartPending=false;gameAudio.setPlaying(false);if(playing)pause();else if(document.pointerLockElement===canvas)document.exitPointerLock();}
 window.addEventListener('blur',releaseInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseInput();lastTime=0;accumulator=0;});
 document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.addEventListener('click',()=>{if(ready)setFloor(button.dataset.floor as FloorId);}));
 reset.addEventListener('click',()=>{setFloor(activeFloor);status.textContent='Du bist wieder am Startpunkt dieser Etage.';});
 $<HTMLInputElement>('sensitivity').addEventListener('input',event=>{sensitivity=Number((event.target as HTMLInputElement).value);});
+$('touch-pause').addEventListener('click',pause);
+$('toggle-map').addEventListener('click',()=>{
+  const expanded=document.body.classList.toggle('mobile-map-open');$('toggle-map').setAttribute('aria-pressed',String(expanded));
+});
+$('input-mode').addEventListener('change',()=>{
+  inputMode=$<HTMLSelectElement>('input-mode').value as InputMode;saveSetting('input-mode',inputMode);
+  touchMode=useTouch(inputMode,coarsePointer.matches,Boolean(canvas.requestPointerLock));
+  releaseInput();updateInputUI();applyGraphics();status.textContent=controlHint();
+});
+coarsePointer.addEventListener('change',()=>{
+  if(inputMode!=='auto')return;
+  releaseInput();touchMode=useTouch(inputMode,coarsePointer.matches,Boolean(canvas.requestPointerLock));updateInputUI();applyGraphics();
+});
+$('touch-sensitivity').addEventListener('input',()=>{touchSensitivity=Number($<HTMLInputElement>('touch-sensitivity').value);saveSetting('touch-sensitivity',String(touchSensitivity));});
+$('touch-size').addEventListener('change',()=>{const value=$<HTMLSelectElement>('touch-size').value;document.body.classList.toggle('large-touch',value==='large');saveSetting('touch-size',value);touch.reset();});
+$('graphics-mode').addEventListener('change',()=>{graphicsMode=$<HTMLSelectElement>('graphics-mode').value;saveSetting('graphics-mode',graphicsMode);applyGraphics();});
+$('fullscreen').hidden=!document.documentElement.requestFullscreen;
+$('fullscreen').addEventListener('click',async()=>{
+  try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
+  catch{status.textContent='Vollbild ist hier nicht verfügbar. Du kannst trotzdem spielen.';}
+});
 window.addEventListener('resize',()=>{
+  if(playing&&portrait())pause();
+  touch.reset();updateInputUI();
   if(!renderer)return;
   camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);renderDirty=true;
+  applyGraphics();
 });
 
 function animate(time:number) {
   frameId=requestAnimationFrame(animate);
   const dt = lastTime ? Math.min((time-lastTime)/1000,.1) : 0;lastTime=time;
   if(document.hidden)return;
-  if(locked) {
+  if(playing) {
     accumulator+=dt;
-    const input = {
+    let input = {
       forward:Number(keys.has('KeyW'))-Number(keys.has('KeyS')),
       right:Number(keys.has('KeyD'))-Number(keys.has('KeyA')),
       sprint:keys.has('ShiftLeft')||keys.has('ShiftRight'),
@@ -319,6 +409,7 @@ function animate(time:number) {
       jump:keys.has('Space'),
     };
     while(accumulator>=FIXED_DT) {
+      if(touchMode)input=touch.input.sample();
       const pos=player.body.translation();previousPosition.set(pos.x,pos.y,pos.z);
       previousHeight=player.height;
       house.boxingView?.capture();
@@ -342,6 +433,7 @@ function animate(time:number) {
     house.boxingView?.update(accumulator/FIXED_DT);
     const boxing=house.boxing;
     const training=Boolean(boxing?.nearby(boxingPose()));
+    touch.setTraining(training);
     boxingHud.hidden=!training;
     if(training && boxing) {
       $('boxing-left').textContent=String(boxing.hits.left);
@@ -359,10 +451,8 @@ async function init() {
   try {
     if (!await checkAuthentication()) return;
     if (!menu.open) menu.showModal();
-    if(!canvas.requestPointerLock)throw new Error('Dieser Browser unterstützt keine Maussteuerung. Bitte nutze einen Desktop-Browser mit Maus und Tastatur.');
     renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
-    renderer.setPixelRatio(Math.min(devicePixelRatio,1.75));renderer.setSize(innerWidth,innerHeight);
-    renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    renderer.shadowMap.type=THREE.PCFShadowMap;applyGraphics();
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
     if (import.meta.env.DEV) {
@@ -370,10 +460,10 @@ async function init() {
       try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
     } else if (!await loadRemoteModel()) return;
     if (!menu.open) menu.showModal();
-    ready=true;start.disabled=false;reset.disabled=false;
+    ready=true;updateInputUI();reset.disabled=false;
     $<HTMLButtonElement>('import-model').disabled=false;
     $('start-label').textContent=customModel?'Haus betreten':'Testraum betreten';
-    status.textContent='Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';
+    status.textContent=controlHint();
     frameId=requestAnimationFrame(animate);
   } catch(error) {
     console.error(error);

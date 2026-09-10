@@ -65,6 +65,20 @@ Dämpfung entstehen aus der Simulation. Der Sack ist ein starrer Körper ohne
 Verformung. Schläge haben begrenzte Reichweite und werden von Hindernissen
 blockiert. Es sind keine neuen Umgebungsvariablen oder Uploads notwendig.
 
+## Spielen auf dem Smartphone
+
+Im Querformat öffnen. Touch-Steuerung wird automatisch aktiviert:
+
+- Links: virtueller Joystick zum Bewegen; ganz nach außen ziehen für schnelles Gehen.
+- Rechts: wischen zum Umschauen.
+- Springen und Ducken: Bildschirmtasten; Ducken durch erneutes Antippen beenden.
+- Am Boxsack: Faust L und Faust R.
+- Oben rechts: Pause und einblendbare Karte.
+
+Im Menü lassen sich Eingabeart, Touch-Empfindlichkeit, Tastengröße und Grafikprofil einstellen. Auf Touch-Geräten reduziert das automatische Grafikprofil die Renderauflösung und deaktiviert Schatten. Bei App-Wechsel oder Hochformat pausiert das Spiel; Fortsetzen erfolgt bewusst über Weiter. Vollbild ist optional.
+
+Prüfstand und noch offene Geräteabnahme: [Mobile-Plan](docs/MOBILE-PLAN.md).
+
 ## Vercel
 
 | Einstellung | Wert |
@@ -88,8 +102,8 @@ npm ci
 npm run dev
 ```
 
-Die angezeigte URL im Desktop-Browser öffnen. „Testraum betreten“ aktiviert die
-Maussteuerung. Benötigt WebGL 2, Maus und Tastatur.
+Die angezeigte URL im Browser öffnen. „Testraum betreten“ startet die Maus- oder
+Touch-Steuerung. Benötigt WebGL 2 und Maus/Tastatur oder einen Touchscreen.
 
 | Eingabe | Funktion |
 | --- | --- |

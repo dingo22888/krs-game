@@ -1,6 +1,6 @@
 # Mobile Spielbarkeit
 
-Status: Geplant und vom Nutzer am 08.09.2026 zur Ablage bestätigt. Umsetzung zurückgestellt; zunächst Raumwirkung und Realismus verbessern.
+Status: Touch-Steuerung und mobile Oberfläche am 10.09.2026 umgesetzt. Automatisierte Chromium-Prüfung mit Touch-Emulation sowie Desktop-Prüfung bestanden. Die Abnahme auf echten iPhone- und Android-Geräten steht noch aus.
 
 ## Ziel
 
@@ -65,6 +65,15 @@ Auf echtem iPhone und Android-Gerät:
 - Drehen, App-Wechsel, Displaysperre und Fortsetzen ohne festhängende Eingaben.
 - Mindestens zehn Minuten spielen, Erwärmung und Leistungseinbrüche prüfen.
 - Desktop-Steuerung auf Regressionen prüfen.
+
+## Bisherige Prüfung
+
+- Mehrfingereingaben: gleichzeitig bewegen, umsehen und springen; Abbruch ohne festhängende Eingaben.
+- Ducken, Pause/Fortsetzen, Hochformat-Drehhinweis, Etagenauswahl und gespeicherte Einstellungen.
+- Beide Fausttasten lösen tatsächliche Treffer am Boxsack aus.
+- Start ohne Pointer-Lock-API; Desktop weiterhin mit Pointer Lock, WASD und Escape.
+- Anmeldung und automatisches Modellladen im lokalen Browserablauf mit Test-API; keine Live-Zugangsdaten im Test.
+- Browser-Emulation ersetzt keine Geräteprüfung: Safari, Geräteleistung, Bildschirmtastatur und Audio auf echten Mobilgeräten noch prüfen.
 
 ## Umsetzungsetappen
 
