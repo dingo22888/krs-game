@@ -51,7 +51,7 @@ test('table is 1.60 by .90 with four inward chairs; door leaf is beside a traver
   assert.ok(door.position[0]+door.size[0]/2<=4.8);
   assert.ok(!boxes.some(b=>b.collision&&Math.abs(b.position[0]-4.9)<b.size[0]/2&&Math.abs(b.position[2]-3.15)<b.size[2]/2&&Math.abs(b.position[1]-1)<b.size[1]/2));
   const glass=boxes.find(b=>b.material==='glass')!;
-  assert.ok(glass.collision);assert.ok(Math.abs(glass.position[1]-glass.size[1]/2-1)<1e-9);
+  assert.ok(glass.collision);assert.ok(Math.abs(glass.position[1]-glass.size[1]/2-1.055)<1e-9);
 });
 
 test('kitchen runs meet walls, keep the hall entrance open and have two 2.2m cabinets',()=>{
@@ -125,4 +125,32 @@ test('balcony bay has floor-height glass and dark frames while the adjacent wind
   assert.ok(boxes.some(b=>b.material==='hardware'));
   const broken=structuredClone(loaded);broken.eg.openings.at(-1)!.balcony!.width=9;
   assert.throws(()=>parseHouseModel(JSON.stringify({format:'krs-house',version:2,floors:broken})),/Ungültige/);
+});
+
+
+test('lounge additions are repeatable, fit the room and retain a nonblocking rug and 65-inch TV',()=>{
+  const source=fixture(),eg=source.eg;
+  eg.rooms=[{name:'Wohnzimmer',surface:'wood',polygon:polygon([.2,.2,4.8,4.8])}];
+  eg.walls=[polygon([4.8,0,5,5])];eg.openings=[];
+  eg.furniture=[{kind:'sofa',rect:[.35,1.65,1.4,4.2],height:.82}];
+  const snapshot=structuredClone(source),result=prepareInteriors(source);
+  assert.deepEqual(source,snapshot);assert.deepEqual(prepareInteriors(result),result);
+  for(const kind of ['rug','armchair','tv'])assert.equal(result.eg.furniture.filter(f=>f.kind===kind).length,1);
+  const tv=result.eg.furniture.find(f=>f.kind==='tv')!;
+  assert.ok(Math.abs(Math.hypot(tv.rect[3]-tv.rect[1],tv.height)-65*.0254)<1e-9);
+  const model=buildModel(result.eg);
+  assert.ok(model.filter(b=>b.material==='rug').every(b=>!b.collision&&b.position[1]-b.size[1]/2>.002));
+  assert.ok(model.some(b=>b.material==='upholstery'&&b.collision));
+  assert.ok(model.some(b=>b.material==='screen'));
+  assert.equal(JSON.stringify(parseHouseModel(JSON.stringify({format:'krs-house',version:1,floors:result})).eg.furniture),JSON.stringify(result.eg.furniture));
+});
+
+test('window frames surround both window orientations on every floor and keep panes solid',()=>{
+  for(const plan of Object.values(floors))for(const rect of [[1,0,2.6,.2],[0,1,.2,2.6]] as [number,number,number,number][]) {
+    const p=structuredClone(plan);p.openings=[{kind:'window',rect,sill:.85,top:2.1}];p.walls=[];p.furniture=[];
+    const boxes=buildModel(p),frames=boxes.filter(b=>b.material==='windowFrame');
+    assert.equal(frames.length,5);
+    const panes=boxes.filter(b=>b.material==='glass');assert.equal(panes.length,1);assert.ok(panes[0].collision);
+    assert.ok(frames.every(b=>b.position[0]-b.size[0]/2>=rect[0]-1e-9&&b.position[0]+b.size[0]/2<=rect[2]+1e-9&&b.position[2]-b.size[2]/2>=rect[1]-1e-9&&b.position[2]+b.size[2]/2<=rect[3]+1e-9));
+  }
 });

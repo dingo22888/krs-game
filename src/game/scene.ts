@@ -68,6 +68,9 @@ export function createHouseScene(plans:FloorPlan[]) {
     door:new THREE.MeshStandardMaterial({color:'#526168',roughness:.78}),
     interiorDoor:new THREE.MeshStandardMaterial({color:'#faf9f5',roughness:.6}),
     windowFrame:new THREE.MeshStandardMaterial({color:'#202427',roughness:.65}),
+    upholstery:new THREE.MeshStandardMaterial({color:'#373a3e',roughness:1}),
+    rug:new THREE.MeshStandardMaterial({color:'#b6b0a4',roughness:1}),
+    screen:new THREE.MeshStandardMaterial({color:'#101a20',metalness:.25,roughness:.22}),
     hardware:new THREE.MeshStandardMaterial({color:'#101112',metalness:.3,roughness:.5}),
   };
   const model = buildBuilding(plans);

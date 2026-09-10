@@ -10,6 +10,7 @@ const inside=(r:Rect,room:Room)=>inPolygon((r[0]+r[2])/2,(r[1]+r[3])/2,room.poly
  * or floor outlines belong in the public bundle. Safe to run again on a saved
  * model: replace the room's generated furniture rather than duplicating it. */
 export function prepareInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
+  input=prepareLivingRoom(input);
   const plan=input.eg;
   const dining=plan.rooms.find(r=>/^esszimmer$/i.test(r.name));
   const kitchen=plan.rooms.find(r=>/^küche$/i.test(r.name));
@@ -96,5 +97,32 @@ export function prepareInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId
   // A peninsula, attached to the dining partition, with clearance to the door.
   const end=connecting.rect[1]-.25;
   add([west,end-.95,west+1.8,end],.92,'south');
+  return result;
+}
+
+/** Locate the lounge from its imported sofa and room, keeping private dimensions out of source. */
+function prepareLivingRoom(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
+  const room=input.eg.rooms.find(r=>/^wohnzimmer$/i.test(r.name));
+  if(!room)return input;
+  const sofas=input.eg.furniture.filter(f=>f.kind==='sofa'&&inside(f.rect,room));
+  if(!sofas.length)return input;
+  const r=bounds(room),main=sofas.reduce((a,b)=>a.height>b.height?a:b);
+  // Existing lounge layout: sofa against the west wall, facing the east wall.
+  if(main.rect[0]-r[0]>.65||r[2]-r[0]<3)return input;
+  const result=structuredClone(input),plan=result.eg;
+  plan.furniture=plan.furniture.filter(f=>!(['rug','armchair','tv'].includes(f.kind)&&inside(f.rect,room)));
+  for(const sofa of plan.furniture.filter(f=>f.kind==='sofa'&&inside(f.rect,room)))sofa.facing='east';
+  const north=Math.min(...sofas.map(f=>f.rect[1])),south=Math.max(...sofas.map(f=>f.rect[3]));
+  const west=Math.min(...sofas.map(f=>f.rect[0])),east=Math.max(...sofas.map(f=>f.rect[2]));
+  plan.furniture.push({kind:'rug',rect:[Math.max(r[0]+.06,west-.12),Math.max(r[1]+.1,north-.18),Math.min(r[2]-.8,east+.65),Math.min(r[3]-.06,south+.12)],height:.016});
+  // Right of the sofa when facing the window (north in the imported plan).
+  const chair:Rect=[west,Math.max(r[1]+.15,north-1.18),west+.88,north-.2];
+  const clear=(rect:Rect)=>rect[3]-rect[1]>.7&&[...rectanglePoints(rect),[(rect[0]+rect[2])/2,(rect[1]+rect[3])/2]].every(p=>inPolygon(p[0],p[1],room.polygon));
+  if(clear(chair))plan.furniture.push({kind:'armchair',rect:chair,height:.94,facing:'east'});
+  // 65-inch 16:9 panel: physical width/height derived from its diagonal.
+  const diagonal=65*.0254,width=diagonal*16/Math.hypot(16,9),height=diagonal*9/Math.hypot(16,9);
+  const cz=(main.rect[1]+main.rect[3])/2;
+  const wall=wallLayout(plan).walls.filter(w=>Math.abs(w[0]-r[2])<.15&&w[1]<=cz-width/2&&w[3]>=cz+width/2).sort((a,b)=>Math.abs(a[0]-r[2])-Math.abs(b[0]-r[2]))[0];
+  if(wall)plan.furniture.push({kind:'tv',rect:[wall[0]-.065,cz-width/2,wall[0]-.015,cz+width/2],height,facing:'west'});
   return result;
 }

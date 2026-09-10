@@ -57,7 +57,7 @@ export function parseHouseModel(text:string):Record<FloorId,FloorPlan> {
         if(o.balcony!==undefined){const b=object(o.balcony);if(opening.kind!=='window')fail();const width=number(b.width,.5,2);if(width>=Math.max(opening.rect[2]-opening.rect[0],opening.rect[3]-opening.rect[1])-.3)fail();opening.balcony={side:oneOf(b.side,['start','end']),width};}
         return opening;
       }),
-      furniture:list(f.furniture,100,v=>{const item=object(v);return {kind:oneOf<Furniture['kind']>(item.kind,['sofa','table','counter','bed','shelf','chair']),rect:rect(item.rect),height:number(item.height,.15,5),facing:item.facing===undefined?undefined:oneOf<Furniture['facing'] & string>(item.facing,['north','south','east','west'])};}),
+      furniture:list(f.furniture,100,v=>{const item=object(v);return {kind:oneOf<Furniture['kind']>(item.kind,['sofa','table','counter','bed','shelf','chair','rug','armchair','tv']),rect:rect(item.rect),height:number(item.height,item.kind==='rug'?.005:.15,5),facing:item.facing===undefined?undefined:oneOf<Furniture['facing'] & string>(item.facing,['north','south','east','west'])};}),
       stairZones:list(f.stairZones,20,rect),spawn:spawn(f.spawn),
     };
     if(!plan.rooms.length||!plan.walls.length||!inPolygon(plan.spawn.x,plan.spawn.z,plan.footprint))fail();

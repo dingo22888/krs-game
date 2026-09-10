@@ -212,7 +212,7 @@ function updateMap() {
   const room = plan.rooms.find(r=>inPolygon(position.x,position.z,r.polygon));
   if (room) {path(room.polygon);ctx.fillStyle='#3d4d46';ctx.fill();}
   ctx.fillStyle='#64726e';
-  for (const f of plan.furniture) {const [x0,z0,x1,z1] = f.rect;ctx.fillRect(ox+x0*scale,oz+z0*scale,(x1-x0)*scale,(z1-z0)*scale);}
+  for (const f of plan.furniture) {if(f.kind==='rug')continue;const [x0,z0,x1,z1] = f.rect;ctx.fillRect(ox+x0*scale,oz+z0*scale,(x1-x0)*scale,(z1-z0)*scale);}
   ctx.strokeStyle='#96bca8';ctx.lineWidth=1;
   for(const stair of plan.stairs??[])for(const step of stair.steps){path(step.polygon);ctx.stroke();}
   ctx.strokeStyle='#bdc9bd';ctx.setLineDash([3,3]);
