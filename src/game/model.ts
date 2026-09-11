@@ -3,14 +3,15 @@ import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
 import { wallLayout } from './wall-layout.ts';
 import { furnitureDetails } from './furniture-details.ts';
+import { kitchenDetails } from './kitchen-details.ts';
 
-export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen'|'ceramic'|'bathTile'|'bedding'|'linen'|'mirror';
+export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen'|'ceramic'|'bathTile'|'bedding'|'linen'|'mirror'|'kitchenFront'|'kitchenOak'|'steel'|'lampGlow';
 export interface BoxSpec {
   position:[number,number,number];
   size:[number,number,number];
   material:MaterialKind;
   collision:boolean;
-  shape?:'ellipsoid'|'ovalX'|'ovalY'|'ovalZ';
+  shape?:'ellipsoid'|'ovalX'|'ovalY'|'ovalZ'|'shade';
 }
 
 /** One geometry description drives the visible model AND the collision world. */
@@ -111,7 +112,7 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
   }
   for(const support of plan.supports??[])add(support.rect,support.bottom,support.top,'metal');
   for (const f of plan.furniture) {
-    const detailed=furnitureDetails(f);
+    const detailed=kitchenDetails(f)??furnitureDetails(f);
     if(detailed){boxes.push(...detailed);continue;}
     const [x0,z0,x1,z1] = f.rect;
     if(f.kind==='rug') {

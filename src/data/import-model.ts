@@ -1,4 +1,4 @@
-import { floorOrder, furnitureKinds } from './house.ts';
+import { floorOrder, furnitureKinds, kitchenKinds } from './house.ts';
 import type { FloorId, FloorPlan, Furniture, Opening, Surface } from './house.ts';
 import { inPolygon } from '../game/geometry.ts';
 import type { Point2, Rect } from '../game/geometry.ts';
@@ -50,7 +50,7 @@ export function parseHouseModel(text:string):Record<FloorId,FloorPlan> {
     const plan:FloorPlan={
       id,name:label(f.name),height:number(f.height,1.85,6),
       footprint:polygon(f.footprint),walls:list(f.walls,100,polygon),
-      rooms:list(f.rooms,60,v=>{const r=object(v);return {name:label(r.name),polygon:polygon(r.polygon),surface:oneOf<Surface>(r.surface,['wood','tile','concrete','carpet','stone'])};}),
+      rooms:list(f.rooms,60,v=>{const r=object(v);return {name:label(r.name),polygon:polygon(r.polygon),surface:oneOf<Surface>(r.surface,['wood','tile','concrete','carpet','stone','oak'])};}),
       openings:list(f.openings,100,v=>{
         const o=object(v);const opening:Opening={kind:oneOf<Opening['kind']>(o.kind,['window','door','passage']),rect:rect(o.rect),sill:o.sill===undefined?undefined:number(o.sill,0,5),top:o.top===undefined?undefined:number(o.top,.5,6)};
         if(o.frame!==undefined)opening.frame=oneOf(o.frame,['white','anthracite'] as const);
@@ -58,7 +58,7 @@ export function parseHouseModel(text:string):Record<FloorId,FloorPlan> {
         if(o.balcony!==undefined){const b=object(o.balcony);if(opening.kind!=='window')fail();const width=number(b.width,.5,2);if(width>=Math.max(opening.rect[2]-opening.rect[0],opening.rect[3]-opening.rect[1])-.3)fail();opening.balcony={side:oneOf(b.side,['start','end']),width};}
         return opening;
       }),
-      furniture:list(f.furniture,100,v=>{const item=object(v);return {kind:oneOf<Furniture['kind']>(item.kind,furnitureKinds),rect:rect(item.rect),height:number(item.height,item.kind==='rug'?.005:.15,5),...(item.bottom===undefined?{}:{bottom:number(item.bottom,0,5)}),facing:item.facing===undefined?undefined:oneOf<Furniture['facing'] & string>(item.facing,['north','south','east','west'])};}),
+      furniture:list(f.furniture,100,v=>{const item=object(v);return {kind:oneOf<Furniture['kind']>(item.kind,furnitureKinds),rect:rect(item.rect),height:number(item.height,['rug','kitchenSplash','ceilingSpot'].includes(item.kind as string)?.005:.15,5),...(item.bottom===undefined?{}:{bottom:number(item.bottom,0,5)}),...(item.kitchen===undefined?{}:{kitchen:oneOf(item.kitchen,kitchenKinds)}),facing:item.facing===undefined?undefined:oneOf<Furniture['facing'] & string>(item.facing,['north','south','east','west'])};}),
       stairZones:list(f.stairZones,20,rect),spawn:spawn(f.spawn),
     };
     if(!plan.rooms.length||!plan.walls.length||!inPolygon(plan.spawn.x,plan.spawn.z,plan.footprint))fail();

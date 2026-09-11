@@ -97,7 +97,7 @@ Griffen am verbindenden Durchgang. Die westliche Esszimmeröffnung erhält links
 rechts ein Fenster mit Brüstung. Die Kombination bekommt dunkle Rahmen.
 Die nördliche äußere Küchenöffnung wird als Fenster mit 1 m Brüstung ausgeführt.
 Die Küche erhält eine wandbündige L-Zeile, zwei 2,20 m hohe Schränke und eine
-1,80 × 0,95 m große, an der Trennwand befestigte Halbinsel. Bestehende
+2,15 × 0,95 m große, an der Trennwand befestigte Halbinsel. Bestehende
 Küchenmöbel werden ersetzt; erneutes Laden erzeugt keine Duplikate.
 Eine kleine ausgesparte Schachtverbindung am Ende der Esszimmertrennwand wird
 zwischen vorhandener Querwand und Rückwand ergänzt (höchstens 50 cm breit und
@@ -152,3 +152,13 @@ Darstellung und Kollision gemeinsam aus, `bottom` erlaubt wandmontierte Objekte.
 `carpet` und `stone` sind weitere Bodenoberflächen. Fenster können über
 `frame: 'white' | 'anthracite'` eine abweichende Rahmenfarbe erhalten. Die Regeln
 sind wiederholbar und bleiben beim Speichern und erneuten JSON-Import stabil.
+
+Die Küchenansicht ist anhand der Referenzfotos aufgebaut: dunkelgraue Fronten
+mit schwarzen Griffen, Eichenarbeitsplatten, Einbaukühlschrank und Backofen,
+L-Zeile mit schwarzer eingelassener Spüle und Geschirrspüler. Die Halbinsel
+trägt das Kochfeld mit integriertem Abzug; zur Sitzseite überragt die Platte
+den Korpus. Zwei schwarze Barstühle, vier Pendelschirme am Holzbalken,
+Deckenstrahler, Fensterrollo und Heizkörper ergänzen die festen Einbauten.
+Lose Gegenstände und Arbeitsplattengeräte werden nicht übernommen. Die
+Einbaupositionen werden aus den privaten Raumgrenzen abgeleitet; Fotos und
+Hausmodell bleiben außerhalb des Repositorys.

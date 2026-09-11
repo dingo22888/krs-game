@@ -1,9 +1,10 @@
-import type { FloorId, FloorPlan, Furniture, Room } from '../data/house.ts';
+import type { FloorId, FloorPlan, Room } from '../data/house.ts';
 import { inPolygon, rectanglePoints, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
 import { prepareDormers } from './dormers.ts';
 import { prepareUpperInteriors } from './upper-interiors.ts';
 import { wallLayout } from './wall-layout.ts';
+import { fitKitchen } from './kitchen-layout.ts';
 
 const bounds=(room:Room):Rect=>[Math.min(...room.polygon.map(p=>p[0])),Math.min(...room.polygon.map(p=>p[1])),Math.max(...room.polygon.map(p=>p[0])),Math.max(...room.polygon.map(p=>p[1]))];
 const inside=(r:Rect,room:Room)=>inPolygon((r[0]+r[2])/2,(r[1]+r[3])/2,room.polygon);
@@ -91,17 +92,8 @@ function prepareBaseInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,Fl
   const hall=layout.openings.find(o=>o.kind==='passage'&&o.rect[0]>=west-.1&&o.rect[2]<=east&&Math.abs(o.rect[1]-south)<.15);
   if(!hall)return result;
   eg.furniture=eg.furniture.filter(f=>!inside(f.rect,kitchen));
-  const add=(rect:Rect,height:number,facing:Furniture['facing'])=>eg.furniture.push({kind:'counter',rect,height,facing});
-  // East run: two full-height cabinets between a northern base unit and the
-  // remaining worktop. The south run meets it without overlapping volumes.
-  const tallStart=north+.9,tallEnd=tallStart+1.2;
-  add([east-.6,north,east,tallStart],.92,'west');
-  for(let i=0;i<2;i++)add([east-.6,tallStart+i*.6,east,tallStart+(i+1)*.6],2.2,'west');
-  add([east-.6,tallEnd,east,south],.92,'west');
-  add([hall.rect[2],south-.6,east-.6,south],.92,'north');
-  // A peninsula, attached to the dining partition, with clearance to the door.
-  const end=connecting.rect[1]-.25;
-  add([west,end-.95,west+1.8,end],.92,'south');
+  eg.rooms.find(r=>r.name===kitchen.name)!.surface='oak';
+  eg.furniture.push(...fitKitchen([west,north,east,south],hall.rect[2],connecting.rect[1],eg.height,wallLayout(eg).openings));
   return result;
 }
 

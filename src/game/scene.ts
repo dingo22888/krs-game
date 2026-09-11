@@ -17,7 +17,17 @@ function floorTexture(surface:Surface) {
   const ctx = canvas.getContext('2d')!;
   ctx.fillStyle = surface === 'wood' ? '#997a57' : surface === 'tile' ? '#969da0' : surface==='stone'?'#a1998a':surface==='carpet'?'#aaa8a3':'#888d8e';
   ctx.fillRect(0,0,256,256);
-  if (surface === 'wood') {
+  if(surface==='oak') {
+    const colors=['#a28b70','#b09b7e','#9b876f','#baa38a'];
+    for(let i=0;i<4;i++){
+      ctx.fillStyle=colors[i];ctx.fillRect(i*64,0,64,256);
+      ctx.fillStyle='rgba(52,39,25,.20)';ctx.fillRect(i*64,0,1,256);ctx.fillRect(i*64,(i*83)%256,64,1);
+      for(let j=0;j<40;j++){
+        ctx.strokeStyle=j%2?'rgba(255,238,204,.08)':'rgba(64,40,20,.08)';ctx.lineWidth=.6;
+        ctx.beginPath();ctx.moveTo(i*64+2+j*1.5,0);ctx.bezierCurveTo(i*64+j*1.5+5,72,i*64+j*1.5,175,i*64+2+j*1.5,256);ctx.stroke();
+      }
+    }
+  } else if (surface === 'wood') {
     for (let i=0;i<8;i++) {
       ctx.fillStyle = i%3 === 0 ? '#a88c69' : i%3 === 1 ? '#a18561' : '#967653';
       ctx.fillRect(i*32,0,31,256);
@@ -87,6 +97,10 @@ export function createHouseScene(plans:FloorPlan[]) {
     bedding:new THREE.MeshStandardMaterial({color:'#9ba48a',roughness:1}),
     linen:new THREE.MeshStandardMaterial({color:'#bcb6a9',roughness:1}),
     mirror:new THREE.MeshStandardMaterial({color:'#aebbc0',metalness:.8,roughness:.18}),
+    kitchenFront:new THREE.MeshStandardMaterial({color:'#494642',roughness:.88}),
+    kitchenOak:new THREE.MeshStandardMaterial({color:'#d6b783',map:floorTexture('oak'),roughness:.63}),
+    steel:new THREE.MeshStandardMaterial({color:'#929694',metalness:.72,roughness:.34}),
+    lampGlow:new THREE.MeshStandardMaterial({color:'#fff0ce',emissive:'#ffd698',emissiveIntensity:1.2,roughness:.6}),
   };
   const model = buildBuilding(plans);
   addBuildingColliders(world,model);
@@ -100,6 +114,14 @@ export function createHouseScene(plans:FloorPlan[]) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(boxSurfacePositions(group), 3));
       geometry.computeVertexNormals();
+      if(kind==='kitchenOak') {
+        const pos=geometry.getAttribute('position'),normal=geometry.getAttribute('normal'),uv=[];
+        for(let i=0;i<pos.count;i++) {
+          const y=Math.abs(normal.getY(i))>.5;
+          uv.push(Math.abs(normal.getX(i))>.5?pos.getZ(i):pos.getX(i),y?pos.getZ(i):pos.getY(i));
+        }
+        geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+      }
       const mesh = new THREE.Mesh(geometry,materials[kind]);
       mesh.castShadow = kind !== 'ceiling' && kind !== 'glass';
       mesh.receiveShadow = true;
@@ -107,14 +129,14 @@ export function createHouseScene(plans:FloorPlan[]) {
     }
   }
   for(const spec of model.boxes.filter(b=>b.shape)) {
-    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(.5,.5,1,40);
+    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(spec.shape==='shade'?.25:.5,.5,1,40);
     if(spec.shape==='ovalX')geometry.rotateZ(Math.PI/2);
     if(spec.shape==='ovalZ')geometry.rotateX(Math.PI/2);
     const mesh=new THREE.Mesh(geometry,materials[spec.material]);
     mesh.position.set(...spec.position);mesh.scale.set(...spec.size);
     mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
   }
-  const floorMaterials = Object.fromEntries((['wood','tile','concrete','carpet','stone'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
+  const floorMaterials = Object.fromEntries((['wood','tile','concrete','carpet','stone','oak'] as const).map(s => [s,new THREE.MeshStandardMaterial({map:floorTexture(s),roughness:.88})])) as Record<Surface,THREE.MeshStandardMaterial>;
   for(const hull of model.hulls)if(hull.visible) {
     const points:THREE.Vector3[]=[];
     for(let i=0;i<hull.vertices.length;i+=3)points.push(new THREE.Vector3(...hull.vertices.slice(i,i+3) as [number,number,number]));
