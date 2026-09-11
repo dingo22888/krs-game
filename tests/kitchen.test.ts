@@ -15,6 +15,16 @@ test('kitchen has built-in appliances, two stools and one four-shade pendant',()
   const items=recipe();
   for(const kitchen of ['fridge','oven','sink','dishwasher','hob'])assert.equal(items.filter(f=>f.kitchen===kitchen).length,1);
   assert.equal(items.filter(f=>f.kind==='barstool').length,2);
+  const sinkRun=items.filter(f=>f.kind==='counter'&&f.facing==='north'&&f.kitchen!=='hob');
+  assert.equal(sinkRun.length,3);
+  assert.ok(sinkRun.every(f=>Math.abs(f.rect[2]-f.rect[0]-.6)<1e-9));
+  assert.ok(Math.min(...sinkRun.map(f=>f.rect[0]))>1.1);
+  const eastDrawers=items.filter(f=>f.facing==='west'&&f.kitchen==='drawers');
+  assert.equal(eastDrawers.length,2);
+  assert.ok(eastDrawers.every(f=>Math.abs(f.rect[3]-f.rect[1]-.6)<1e-9));
+  const pantry=items.find(f=>f.kind==='pantryDoor')!,fridge=items.find(f=>f.kitchen==='fridge')!;
+  assert.equal(pantry.facing,'west');assert.equal(pantry.rect[3],fridge.rect[1]);
+  assert.ok(Math.abs(pantry.rect[2]-pantry.rect[0]-.6)<1e-9);
   assert.equal(items.filter(f=>f.kind==='counter'&&f.height===2.2).length,2);
   const pendant=items.find(f=>f.kind==='kitchenPendant')!;
   assert.equal(kitchenDetails(pendant)!.filter(b=>b.shape==='shade').length,4);

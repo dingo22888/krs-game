@@ -60,7 +60,7 @@ test('kitchen runs meet walls, keep the hall entrance open and have two 2.2m cab
   assert.equal(cabinets.filter(f=>f.height===2.2).length,2);
   assert.ok(cabinets.filter(f=>f.facing==='west').every(f=>f.rect[2]===9.8));
   assert.equal(cabinets.find(f=>f.facing==='north')!.rect[3],4.8);
-  assert.equal(cabinets.find(f=>f.facing==='north')!.rect[0],6.2);
+  assert.ok(cabinets.find(f=>f.facing==='north')!.rect[0]>6.2,'sink run leaves wall space beside the entrance');
   const peninsula=cabinets.find(f=>f.kitchen==='hob')!;
   assert.equal(peninsula.rect[0],5);assert.ok(peninsula.rect[3]<2.7);
   for(const a of cabinets)for(const b of cabinets)if(a!==b) {

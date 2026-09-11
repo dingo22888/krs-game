@@ -90,7 +90,7 @@ function prepareBaseInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,Fl
   const west=face(0,2,k[0]),east=face(0,0,k[2]),north=face(1,3,k[1]),south=face(1,1,k[3]);
   if(east-west<3||south-north<3||!connecting)return result;
   const hall=layout.openings.find(o=>o.kind==='passage'&&o.rect[0]>=west-.1&&o.rect[2]<=east&&Math.abs(o.rect[1]-south)<.15);
-  if(!hall)return result;
+  if(!hall||south-north<3.7||east-.6-1.8<hall.rect[2])return result;
   eg.furniture=eg.furniture.filter(f=>!inside(f.rect,kitchen));
   eg.rooms.find(r=>r.name===kitchen.name)!.surface='oak';
   eg.furniture.push(...fitKitchen([west,north,east,south],hall.rect[2],connecting.rect[1],eg.height,wallLayout(eg).openings));

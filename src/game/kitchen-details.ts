@@ -29,14 +29,14 @@ export function kitchenDetails(f:Furniture):BoxSpec[]|undefined {
     if(!high) {
       if(f.kitchen==='sink'){
         // Real opening in the oak top, with a recessed black basin.
-        const a=w*.08,c=w*.51,va=.13,vc=d-.07;
+        const a=.04,c=w-.04,va=.13,vc=d-.07;
         add(0,0,w,va,top,h,'kitchenOak');add(0,vc,w,d+.028,top,h,'kitchenOak');
         add(0,va,a,vc,top,h,'kitchenOak');add(c,va,w,vc,top,h,'kitchenOak');
         add(a,va,c,vc,h-.19,h-.175,'hardware');
         add(a,va,a+.018,vc,h-.175,h+.006,'hardware');add(c-.018,va,c,vc,h-.175,h+.006,'hardware');
         add(a,va,c,va+.018,h-.175,h+.006,'hardware');add(a,vc-.018,c,vc,h-.175,h+.006,'hardware');
-        add(c+.015,va,w-.025,vc,h,h+.008,'hardware',false);
-        for(let u=c+.04;u<w-.025;u+=.035)add(u,va+.02,u+.008,vc-.02,h+.008,h+.012,'metal',false);
+        add(w+.015,va,w+.40,vc,h,h+.008,'hardware',false);
+        for(let u=w+.04;u<w+.38;u+=.035)add(u,va+.02,u+.008,vc-.02,h+.008,h+.012,'metal',false);
         const tap=(a+c)/2;add(tap-.018,.075,tap+.018,.11,h,h+.32,'hardware',false);
         add(tap-.018,.075,tap+.018,.25,h+.285,h+.32,'hardware',false);
       } else add(0,0,w,d+.028,top,h,'kitchenOak');
@@ -58,7 +58,7 @@ export function kitchenDetails(f:Furniture):BoxSpec[]|undefined {
     } else if(f.kitchen==='sink'||f.kitchen==='corner')panel(0,w,.1,top);
     else {
       const n=hob?2:1;
-      for(let i=0;i<n;i++)for(const [lo,hi] of [[.1,.43],[.43,.70],[.70,top]])panel(w*i/n,w*(i+1)/n,lo,hi);
+      for(let i=0;i<n;i++)for(const [lo,hi] of [[.1,.35],[.35,.74],[.74,top]])panel(w*i/n,w*(i+1)/n,lo,hi);
     }
     if(hob){
       // Flush induction glass, four subtle rings, central downdraft grille.
@@ -94,9 +94,19 @@ export function kitchenDetails(f:Furniture):BoxSpec[]|undefined {
     add(.008,.008,w-.008,d-.008,-.002,.002,'lampGlow',false,'ovalY');
   } else if(f.kind==='kitchenSplash')add(0,0,w,d,0,h,'kitchenFront',false);
   else if(f.kind==='pantryDoor') {
-    add(0,0,w,d,0,h,'interiorDoor');
-    add(.10,d,w-.10,d+.002,.18,h-.30,'hardware',false);
-    handle(w-.07,1,.11);
+    // A room-depth enclosure with its closed white door facing the kitchen.
+    // Front plane matches the cabinet fronts; the cavity is behind it.
+    const doorTop=Math.min(2.06,h-.08),jamb=.07,front=d-.065;
+    add(0,0,jamb,d,0,h,'wall');add(w-jamb,0,w,d,0,h,'wall');
+    add(jamb,front,w-jamb,d,doorTop,h,'wall');
+    add(jamb,0,w-jamb,.04,0,h,'wall');
+    add(jamb,.04,w-jamb,front,h-.04,h,'wall');
+    add(jamb,front,w-jamb,d-.02,0,doorTop,'interiorDoor');
+    add(jamb-.015,d-.02,jamb+.025,d+.012,0,doorTop+.035,'interiorDoor',false);
+    add(w-jamb-.025,d-.02,w-jamb+.015,d+.012,0,doorTop+.035,'interiorDoor',false);
+    add(jamb-.015,d-.02,w-jamb+.015,d+.012,doorTop,doorTop+.035,'interiorDoor',false);
+    add(jamb+.12,d-.019,w-jamb-.12,d-.016,.18,doorTop-.30,'hardware',false);
+    handle(w-jamb-.08,1,.11);
   } else if(f.kind==='windowBlind') {
     for(const [a,c] of [[0,w/2-.028],[w/2+.028,w]])for(let y=0;y<h;y+=.025)add(a,0,c,d,y,Math.min(y+.021,h),'linen',false);
   } else if(f.kind==='wallClock') {

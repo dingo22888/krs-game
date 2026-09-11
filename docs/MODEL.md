@@ -162,3 +162,10 @@ Deckenstrahler, Fensterrollo und Heizkörper ergänzen die festen Einbauten.
 Lose Gegenstände und Arbeitsplattengeräte werden nicht übernommen. Die
 Einbaupositionen werden aus den privaten Raumgrenzen abgeleitet; Fotos und
 Hausmodell bleiben außerhalb des Repositorys.
+
+Korrektur nach Detailfotos: Die Spülenseite besteht aus drei 60-cm-Modulen
+(Spüle, Geschirrspüler, Schubladen) mit freier Wand bis zur Eingangstür.
+Die andere Seite enthält vor den zwei Hochschränken eine deckenhohe,
+etwa 1 m breite und 60 cm tiefe Abstellkammer mit weißer Tür zur Küche;
+danach folgen genau zwei 60-cm-Unterschränke und die Ecke. Die Barhocker
+sind 18 cm näher an die Halbinsel gerückt.
