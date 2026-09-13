@@ -9,6 +9,7 @@ import type { Point2 } from './geometry.ts';
 import { prepareActivities } from './activities.ts';
 import { Boxing } from './boxing.ts';
 import { BoxingView } from './boxing-view.ts';
+import { diningTexture } from './dining-textures.ts';
 import { boxSurfacePositions } from './box-surfaces.ts';
 
 function floorTexture(surface:Surface) {
@@ -100,6 +101,12 @@ export function createHouseScene(plans:FloorPlan[]) {
     kitchenFront:new THREE.MeshStandardMaterial({color:'#494642',roughness:.88}),
     kitchenOak:new THREE.MeshStandardMaterial({color:'#d6b783',map:floorTexture('oak'),roughness:.63}),
     steel:new THREE.MeshStandardMaterial({color:'#929694',metalness:.72,roughness:.34}),
+    wicker:new THREE.MeshStandardMaterial({map:diningTexture('wicker'),roughness:1}),
+    diningWood:new THREE.MeshStandardMaterial({map:diningTexture('wood'),roughness:.72}),
+    diningPattern:new THREE.MeshStandardMaterial({map:diningTexture('wallpaper'),roughness:1}),
+    diningShade:new THREE.MeshStandardMaterial({map:diningTexture('shade'),side:THREE.DoubleSide,roughness:.82}),
+    copper:new THREE.MeshStandardMaterial({color:'#b96c32',side:THREE.DoubleSide,metalness:.6,roughness:.35}),
+    leaf:new THREE.MeshStandardMaterial({color:'#305a36',roughness:.82}),
     lampGlow:new THREE.MeshStandardMaterial({color:'#fff0ce',emissive:'#ffd698',emissiveIntensity:1.2,roughness:.6}),
   };
   const model = buildBuilding(plans);
@@ -114,7 +121,7 @@ export function createHouseScene(plans:FloorPlan[]) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(boxSurfacePositions(group), 3));
       geometry.computeVertexNormals();
-      if(kind==='kitchenOak') {
+      if(materials[kind].map) {
         const pos=geometry.getAttribute('position'),normal=geometry.getAttribute('normal'),uv=[];
         for(let i=0;i<pos.count;i++) {
           const y=Math.abs(normal.getY(i))>.5;
@@ -129,7 +136,7 @@ export function createHouseScene(plans:FloorPlan[]) {
     }
   }
   for(const spec of model.boxes.filter(b=>b.shape)) {
-    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(spec.shape==='shade'?.25:.5,.5,1,40);
+    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(spec.shape==='shade'?.25:.5,.5,1,40,1,spec.shape==='drum');
     if(spec.shape==='ovalX')geometry.rotateZ(Math.PI/2);
     if(spec.shape==='ovalZ')geometry.rotateX(Math.PI/2);
     const mesh=new THREE.Mesh(geometry,materials[spec.material]);
@@ -148,6 +155,10 @@ export function createHouseScene(plans:FloorPlan[]) {
     for(const room of plan.rooms)for(const rect of subtractRects(decomposePolygon(room.polygon),plan.floorHoles??[])) {
       const mesh=horizontalPolygon(rectanglePoints(rect),floorMaterials[room.surface],oy+.002);
       mesh.position.x=ox;mesh.position.z=oz;scene.add(mesh);
+    }
+    for(const f of plan.furniture.filter(f=>f.kind==='diningPendant')){
+      const light=new THREE.PointLight('#ffce86',3,5,2);
+      light.position.set(ox+(f.rect[0]+f.rect[2])/2,oy+(f.bottom??1.5)+.08,oz+(f.rect[1]+f.rect[3])/2);scene.add(light);
     }
     const fill=new THREE.PointLight('#fff0d5',22,14,2);
     fill.position.set(ox+plan.spawn.x,oy+plan.height-.2,oz+plan.spawn.z);scene.add(fill);

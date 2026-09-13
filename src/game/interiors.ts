@@ -4,6 +4,7 @@ import type { Rect } from './geometry.ts';
 import { prepareDormers } from './dormers.ts';
 import { prepareUpperInteriors } from './upper-interiors.ts';
 import { wallLayout } from './wall-layout.ts';
+import { furnishDining } from './dining.ts';
 import { fitKitchen } from './kitchen-layout.ts';
 
 const bounds=(room:Room):Rect=>[Math.min(...room.polygon.map(p=>p[0])),Math.min(...room.polygon.map(p=>p[1])),Math.max(...room.polygon.map(p=>p[0])),Math.max(...room.polygon.map(p=>p[1]))];
@@ -80,6 +81,7 @@ function prepareBaseInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,Fl
       eg.furniture.push({kind:'chair',rect:[x-.23,z-.23,x+.23,z+.23],height:.9,facing:alongZ?(side===-1?'east':'west'):(side===-1?'south':'north')});
     }
   }
+  furnishDining(eg,eg.rooms.find(r=>r.name===dining.name)!);
   // Fit each cabinet run against the actual inner wall face, not the slightly
   // different room-label polygon. Ignore small columns when finding the face.
   const face=(axis:0|1,edge:number,value:number)=>{

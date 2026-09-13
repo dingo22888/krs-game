@@ -169,3 +169,11 @@ Die andere Seite enthält vor den zwei Hochschränken eine deckenhohe,
 etwa 1 m breite und 60 cm tiefe Abstellkammer mit weißer Tür zur Küche;
 danach folgen genau zwei 60-cm-Unterschränke und die Ecke. Die Barhocker
 sind 18 cm näher an die Halbinsel gerückt.
+
+Das Esszimmer erhält an der im Plan oberen Wand eine weiße Schrankkombination
+mit schmaler Glasvitrine, Einlegeböden und niedrigen Korbregalen. Wiederholbare
+Materialtexturen bilden Rattangeflecht, Holz und die gemusterte Akzentwand ab.
+Der 1,60-m-Tisch und seine vier Stühle bleiben erhalten; hinzu kommen eine
+schwarze Trommelpendelleuchte mit kupferfarbener Innenseite, warme Lichtleisten,
+eine dunkle Bank sowie Heizkörper und Pflanzen im Fensterbereich. Die
+Fotorichtung Westen entspricht hier ausdrücklich dem oberen Planrand.
