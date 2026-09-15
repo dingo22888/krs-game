@@ -69,3 +69,18 @@ dialog{border:1px solid #d7e2ce26;box-shadow:0 30px 100px #0004;border-radius:4p
 .auth-card{margin:auto;flex-shrink:0}.auth-card .start{display:flex}.auth-card .status{display:block}
 @media(max-height:430px) and (orientation:landscape){.touch-mode dialog h1{font-size:28px}.touch-mode dialog h1 span{display:inline}.touch-mode dialog .intro{margin-bottom:12px}.touch-mode dialog .eyebrow{margin-bottom:8px}.touch-mode .floor-option{min-height:48px;padding:7px 3px}.touch-mode .floor-option span{margin-top:2px}.touch-mode .touch-stick{width:112px;height:112px;bottom:calc(18px + env(safe-area-inset-bottom))}.touch-mode .auth-card{padding:20px 24px}.touch-mode .auth-card h1{font-size:32px}.touch-mode .auth-card .intro{font-size:13px;line-height:1.4;margin-bottom:12px}}
 @media(max-width:380px){.input-settings{grid-template-columns:1fr 130px}.touch-mode dialog{padding:18px}}
+
+/* The buttons follow projected chalk cells, so marks remain on the actual door. */
+.chalk-game { position:fixed;inset:0;z-index:30;pointer-events:none;color:#f3e8ce; }
+.chalk-game[hidden] { display:none; }
+.chalk-caption { position:absolute;top:max(20px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);text-align:center;background:#18201fed;padding:12px 22px;border-radius:8px;max-width:85vw;width:max-content; }
+.chalk-caption span { font:11px monospace;letter-spacing:.13em;color:#d4e7b4; }
+.chalk-caption p { margin:6px 0 0;font-size:14px; }
+.chalk-actions { position:absolute;bottom:max(22px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:12px;pointer-events:auto; }
+.chalk-actions button { min-height:44px;white-space:nowrap;padding:10px 18px;border:1px solid #a4b19a;border-radius:5px;background:#1b2422;color:#f3e8ce;cursor:pointer;font:inherit; }
+.chalk-cell { position:absolute;pointer-events:auto;touch-action:manipulation;background:transparent;border:0;border-radius:5px;cursor:crosshair; }
+.chalk-cell:enabled:hover { background:#ffffff12; }
+.chalk-cell:focus-visible { outline:3px solid #e6d7a0;outline-offset:-7px;background:#ffffff12; }
+.chalk-cell:disabled { cursor:default; }
+body.chalk-playing .map,body.chalk-playing .play-help,body.chalk-playing .movement,body.chalk-playing #crosshair,body.chalk-playing .location,body.chalk-playing .brand { visibility:hidden; }
+@media(max-height:500px){.chalk-caption {top:8px;padding:7px 14px}.chalk-caption p{font-size:12px}.chalk-actions{bottom:8px}.chalk-actions button{padding:7px 12px}}

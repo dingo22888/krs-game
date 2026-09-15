@@ -9,6 +9,7 @@ import type { Point2 } from './geometry.ts';
 import { prepareActivities } from './activities.ts';
 import { Boxing } from './boxing.ts';
 import { BoxingView } from './boxing-view.ts';
+import { Chalkboard } from './chalkboard.ts';
 import { diningTexture } from './dining-textures.ts';
 import { boxSurfacePositions } from './box-surfaces.ts';
 
@@ -179,10 +180,13 @@ export function createHouseScene(plans:FloorPlan[]) {
   const boxing=activity?new Boxing(world,activity):undefined;
   const boxingView=boxing?new BoxingView(boxing):undefined;
   if(boxingView)scene.add(boxingView.group);
+  const pantryPlan=plans.find(p=>p.furniture.some(f=>f.kind==='pantryDoor'));
+  const pantry=pantryPlan?.furniture.find(f=>f.kind==='pantryDoor');
+  const chalkboard=pantryPlan&&pantry?new Chalkboard(pantryPlan,pantry,scene):undefined;
   return {
-    scene,world,boxing,boxingView,
+    scene,world,boxing,boxingView,chalkboard,
     dispose() {
-      boxingView?.dispose();
+      boxingView?.dispose();chalkboard?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse(object => {

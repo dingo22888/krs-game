@@ -177,3 +177,9 @@ Der 1,60-m-Tisch und seine vier Stühle bleiben erhalten; hinzu kommen eine
 schwarze Trommelpendelleuchte mit kupferfarbener Innenseite, warme Lichtleisten,
 eine dunkle Bank sowie Heizkörper und Pflanzen im Fensterbereich. Die
 Fotorichtung Westen entspricht hier ausdrücklich dem oberen Planrand.
+
+### Küchentafel / Tic-Tac-Toe
+
+Die vorhandene `pantryDoor` erhält ihre Tafelfolie samt Wochenplan und Kreidegitter als lokal erzeugte Canvas-Textur. Weder ein neues Hausmodell noch Foto-Assets sind nötig. Beim Blick auf das Gitter aus höchstens 1 m Entfernung beginnt nach 0,3 s ein sanfter Zoom. Die Sichtprüfung berücksichtigt verdeckende Geometrie; die Spielfigur bleibt an ihrem Platz.
+
+X wird per Maus, Touch oder fokussiertem Feld mit Enter gesetzt, die Küche antwortet mit O. „Neue Runde“ setzt das Feld zurück. „Zurück ins Haus“ bzw. Escape beendet die Ansicht; falls der Browser die erneute Mausbindung ablehnt, erscheint das normale Pausenmenü. Für einen erneuten Start zuerst etwas von der Tür zurücktreten. Während des Duells sind Bewegung und Boxen gesperrt. Der Spielstand bleibt bis zum Neuaufbau der Szene erhalten.
