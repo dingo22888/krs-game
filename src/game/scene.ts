@@ -9,6 +9,8 @@ import type { Point2 } from './geometry.ts';
 import { prepareActivities } from './activities.ts';
 import { Boxing } from './boxing.ts';
 import { BoxingView } from './boxing-view.ts';
+import { PongView } from './pong-view.ts';
+import { monitorSize,studioFrame } from './studio.ts';
 import { Chalkboard } from './chalkboard.ts';
 import { diningTexture } from './dining-textures.ts';
 import { boxSurfacePositions } from './box-surfaces.ts';
@@ -161,6 +163,9 @@ export function createHouseScene(plans:FloorPlan[]) {
       const light=new THREE.PointLight('#ffce86',3,5,2);
       light.position.set(ox+(f.rect[0]+f.rect[2])/2,oy+(f.bottom??1.5)+.08,oz+(f.rect[1]+f.rect[3])/2);scene.add(light);
     }
+    for(const f of plan.furniture.filter(f=>f.kind==='studioLamp')){
+      const light=new THREE.PointLight('#ffd7a3',2.5,4,2);light.position.set(ox+(f.rect[0]+f.rect[2])/2-.15,oy+(f.bottom??0),oz+(f.rect[1]+f.rect[3])/2);scene.add(light);
+    }
     const fill=new THREE.PointLight('#fff0d5',22,14,2);
     fill.position.set(ox+plan.spawn.x,oy+plan.height-.2,oz+plan.spawn.z);scene.add(fill);
   }
@@ -180,13 +185,24 @@ export function createHouseScene(plans:FloorPlan[]) {
   const boxing=activity?new Boxing(world,activity):undefined;
   const boxingView=boxing?new BoxingView(boxing):undefined;
   if(boxingView)scene.add(boxingView.group);
+  const studio=plans.find(p=>p.furniture.some(f=>f.workstation==='wide'));
+  const desk=studio?.furniture.find(f=>f.workstation==='wide');
+  const pong=studio&&desk?new PongView(studio,desk,scene):undefined;
+  for(const plan of plans)for(const f of plan.furniture.filter(f=>f.workstation==='standard'&&f.kind==='studioDesk')){
+    const size=monitorSize(f),frame=studioFrame(f),p=frame.point(frame.w/2,.232),[ox,oy,oz]=origin(plan);
+    const display=document.createElement('canvas');display.width=640;display.height=360;const ctx=display.getContext('2d')!;
+    ctx.fillStyle='#264a50';ctx.fillRect(0,0,640,360);ctx.fillStyle='#ceded1';ctx.font='28px sans-serif';ctx.fillText('Guten Morgen.',38,80);ctx.font='16px sans-serif';ctx.fillText('Platz für neue Ideen.',38,110);
+    for(let i=0;i<4;i++){ctx.fillStyle=i%2?'#729f95':'#afd3bb';ctx.fillRect(40+i*140,240,110,68);}
+    const texture=new THREE.CanvasTexture(display);texture.colorSpace=THREE.SRGBColorSpace;
+    const screen=new THREE.Mesh(new THREE.PlaneGeometry(size.width,size.height),new THREE.MeshBasicMaterial({map:texture,toneMapped:false}));screen.position.set(p[0]+ox,oy+f.height+.182+size.height/2,p[1]+oz);screen.rotation.y=frame.angle;scene.add(screen);
+  }
   const pantryPlan=plans.find(p=>p.furniture.some(f=>f.kind==='pantryDoor'));
   const pantry=pantryPlan?.furniture.find(f=>f.kind==='pantryDoor');
   const chalkboard=pantryPlan&&pantry?new Chalkboard(pantryPlan,pantry,scene):undefined;
   return {
-    scene,world,boxing,boxingView,chalkboard,
+    scene,world,boxing,boxingView,chalkboard,pong,
     dispose() {
-      boxingView?.dispose();chalkboard?.dispose();
+      boxingView?.dispose();chalkboard?.dispose();pong?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse(object => {
@@ -196,7 +212,7 @@ export function createHouseScene(plans:FloorPlan[]) {
         }
       });
       geometries.forEach(g=>g.dispose());
-      mats.forEach(m=>{ if (m instanceof THREE.MeshStandardMaterial) m.map?.dispose();m.dispose(); });
+      mats.forEach(m=>{ if (m instanceof THREE.MeshStandardMaterial||m instanceof THREE.MeshBasicMaterial) m.map?.dispose();m.dispose(); });
       sunlight.shadow.map?.dispose();
       world.free();
     },

@@ -5,6 +5,7 @@ import { prepareDormers } from './dormers.ts';
 import { prepareUpperInteriors } from './upper-interiors.ts';
 import { wallLayout } from './wall-layout.ts';
 import { furnishDining } from './dining.ts';
+import { prepareStudio } from './studio.ts';
 import { fitKitchen } from './kitchen-layout.ts';
 
 const bounds=(room:Room):Rect=>[Math.min(...room.polygon.map(p=>p[0])),Math.min(...room.polygon.map(p=>p[1])),Math.max(...room.polygon.map(p=>p[0])),Math.max(...room.polygon.map(p=>p[1]))];
@@ -14,7 +15,7 @@ const inside=(r:Rect,room:Room)=>inPolygon((r[0]+r[2])/2,(r[1]+r[3])/2,room.poly
  * or floor outlines belong in the public bundle. Safe to run again on a saved
  * model: replace the room's generated furniture rather than duplicating it. */
 export function prepareInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
-  return prepareUpperInteriors(prepareDormers(prepareBaseInteriors(input)));
+  return prepareStudio(prepareUpperInteriors(prepareDormers(prepareBaseInteriors(input))));
 }
 function prepareBaseInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
   input=prepareLivingRoom(input);

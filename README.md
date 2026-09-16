@@ -65,6 +65,19 @@ Dämpfung entstehen aus der Simulation. Der Sack ist ein starrer Körper ohne
 Verformung. Schläge haben begrenzte Reichweite und werden von Hindernissen
 blockiert. Es sind keine neuen Umgebungsvariablen oder Uploads notwendig.
 
+## Dachstudio: Pong am Schreibtisch
+
+Das private Modell erhält beim Laden zwei aufgeräumte Arbeitsplätze. Am großen
+49-Zoll-Monitor erscheint beim Annähern und Hinsehen „Hinsetzen & Pong spielen“.
+Mit E, linker Maustaste oder dem Touch-Button hinsetzen und die Partie starten.
+Maus, W/S, Pfeiltasten oder vertikales Wischen bewegen den linken Schläger.
+Der erste Spieler mit fünf Punkten gewinnt. Pause und „Aufstehen“ stehen unten;
+Esc verlässt den Schreibtisch mit einer weichen Kamerafahrt.
+
+Die bestätigten falschen Öffnungen zwischen Schlafzimmer/Kinderflur und neben
+der Dachstudio-Tür werden beim Laden geschlossen, einschließlich Kollisionen.
+Das private Originalmodell muss dafür nicht erneut hochgeladen werden.
+
 ## Spielen auf dem Smartphone
 
 Im Querformat öffnen. Touch-Steuerung wird automatisch aktiviert:
@@ -140,15 +153,16 @@ npm run build
 npm run preview
 ```
 
-36 Tests prüfen den angemeldeten Blob-Abruf mit OIDC-Anfragekontext, den Modellimport und führen Rapier aus: Bewegung, Sprint,
+Automatisierte Tests prüfen den angemeldeten Blob-Abruf mit OIDC-Anfragekontext, den Modellimport und führen Rapier aus: Bewegung, Sprint,
 weiches Ducken, Kopffreiheit,
 Springen/Landung/Deckenkontakt, dünne Wände, Objekte, Türdurchgänge, Stufen,
 Bildraten sowie Startpunkte und Raum-Erreichbarkeit.
 
-Die interne Browservorschau war durch eine Zugriffssperre nicht erreichbar.
-Ein interaktiver Browser-Spieltest steht daher noch aus: Nach dem Deployment
-Pointer Lock, Mausbewegung, alle Tasten, Pause/Tabwechsel und Raumdurchgänge
-in Chrome und Firefox ausprobieren. Touch-Steuerung ist nicht implementiert.
+Pong wurde zusätzlich im Chromium-Browser mit Desktop- und Touch-Eingabe geprüft:
+Annähern, Hinsetzen, Schlägersteuerung, Pause, Aufstehen und Rückkehr zum Joystick.
+Die beiden korrigierten Wandstellen und die verbleibende Tür wurden am lokalen
+privaten Modell mit Kollisionsabfragen geprüft. Reale Mobilgeräte sowie Firefox
+und Safari bleiben zusätzliche manuelle Testziele.
 
 ## Code
 

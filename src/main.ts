@@ -119,17 +119,18 @@ let previousHeight:number = 1.8;
 const boxingHud=$('boxing-hud');
 const gameAudio=new GameAudio();
 const touch=new TouchControls($('touch-controls'),(dx,dy)=>{
-  if(!playing||!touchMode||house?.chalkboard?.active)return;
+  if(!playing||!touchMode||activeActivity())return;
   const scale=3/Math.max(320,innerHeight)*touchSensitivity;
   yaw-=dx*scale;pitch=THREE.MathUtils.clamp(pitch-dy*scale,-Math.PI/2+.025,Math.PI/2-.025);
 },hand=>{if(playing&&touchMode){gameAudio.unlock();house.boxing?.punch(hand,boxingPose());}});
+const activeActivity=()=>house?.chalkboard?.active?house.chalkboard:house?.pong?.active?house.pong:undefined;
 const portrait=()=>touchMode&&innerHeight>innerWidth;
 function controlHint() {return touchMode?'Links bewegen · rechts wischen · Joystick außen: schnell gehen.':'Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';}
 function updateInputUI() {
   document.body.classList.toggle('touch-mode',touchMode);
   $('rotate-hint').hidden=!portrait();
   start.disabled=!ready||portrait();
-  touch.setEnabled(playing&&touchMode&&!house?.chalkboard?.active);
+  touch.setEnabled(playing&&touchMode&&!activeActivity());
   $<HTMLSelectElement>('input-mode').value=inputMode;
 }
 function applyGraphics() {
@@ -236,15 +237,15 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   } catch(error) {nextHouse.dispose();throw error;}
   if (house) {player.dispose();house.dispose();}
   house=nextHouse;player=nextPlayer;activeFloor=id;
-  if(house.chalkboard){
-    house.chalkboard.onEnter=()=>{
+  for(const activity of [house.chalkboard,house.pong])if(activity){
+    activity.onEnter=()=>{
       keys.clear();touch.setEnabled(false);player.stop();accumulator=0;boxingHud.hidden=true;
       if(document.pointerLockElement===canvas)document.exitPointerLock();
     };
-    house.chalkboard.onExit=()=>{
+    activity.onExit=()=>{
       if(!touchMode)void canvas.requestPointerLock()?.catch(()=>{});
     };
-    house.chalkboard.onReturn=()=>{
+    activity.onReturn=()=>{
       keys.clear();touch.reset();accumulator=0;lastTime=0;
       if(!touchMode&&document.pointerLockElement!==canvas)pause();else updateInputUI();
     };
@@ -276,7 +277,7 @@ function updateFloorLabel(id:FloorId) {
 }
 
 function pause() {
-  house?.chalkboard?.cancel(camera);
+  house?.chalkboard?.cancel(camera);house?.pong?.cancel(camera);house?.pong?.hidePrompt();
   gameAudio.setPlaying(false);
   playing=false;mouseStartPending=false;keys.clear();touch.setEnabled(false);accumulator=0;player?.stop();
   if(document.pointerLockElement===canvas)document.exitPointerLock();
@@ -350,28 +351,31 @@ document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
     if(mouseStartPending&&ready&&!touchMode&&!document.hidden)beginPlay();
     else if(!playing||touchMode)document.exitPointerLock();
-  } else if(playing&&!touchMode&&!house?.chalkboard?.active) pause();
+  } else if(playing&&!touchMode&&!activeActivity()) pause();
 });
 document.addEventListener('pointerlockerror',()=>{mouseStartPending=false;status.textContent='Maussteuerung wurde vom Browser abgelehnt. Klicke erneut auf Spielen oder wähle „Touch / Joystick“.';});
 document.addEventListener('mousemove',event=>{
-  if(!playing||touchMode||house?.chalkboard?.active||document.pointerLockElement!==canvas)return;
+  if(!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas)return;
   yaw -= event.movementX*.002*sensitivity;
   pitch = THREE.MathUtils.clamp(pitch-event.movementY*.002*sensitivity,-Math.PI/2+.025,Math.PI/2-.025);
 });
 document.addEventListener('mousedown',event=>{
-  if(!playing||touchMode||house?.chalkboard?.active||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
+  if(!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
   event.preventDefault();
+  if(event.button===0&&house.pong?.available){house.pong.enter();return;}
   gameAudio.unlock();
   house.boxing?.punch(event.button===0?'left':'right',boxingPose());
 });
 canvas.addEventListener('contextmenu',event=>{if(playing)event.preventDefault();});
 document.addEventListener('keydown',event=>{
-  if(house?.chalkboard?.active){if(event.code==='Escape'){event.preventDefault();house.chalkboard.leave();}return;}
+  if(playing&&house?.pong?.key(event.code,true)){event.preventDefault();return;}
+  if(activeActivity()){if(event.code==='Escape'){event.preventDefault();activeActivity()?.leave();}return;}
   if(playing&&event.code==='Escape'){event.preventDefault();pause();return;}
   if(!playing||touchMode || !controlledKeys.has(event.code))return;
   event.preventDefault();keys.add(event.code);
 });
 document.addEventListener('keyup',event=>{
+  house?.pong?.key(event.code,false);
   keys.delete(event.code);
   if(playing && controlledKeys.has(event.code))event.preventDefault();
 });
@@ -414,8 +418,8 @@ function animate(time:number) {
   frameId=requestAnimationFrame(animate);
   const dt = lastTime ? Math.min((time-lastTime)/1000,.1) : 0;lastTime=time;
   if(document.hidden)return;
-  if(playing&&house.chalkboard?.active){
-    house.chalkboard.update(camera,dt);renderer.render(house.scene,camera);return;
+  if(playing&&activeActivity()){
+    activeActivity()!.update(camera,dt);renderer.render(house.scene,camera);return;
   }
   if(playing) {
     accumulator+=dt;
@@ -461,6 +465,7 @@ function animate(time:number) {
     }
     $('crosshair').classList.toggle('hit',training && (boxing?.flash??0)>0);
     house.chalkboard?.approach(camera,dt);
+    if(!activeActivity())house.pong?.approach(camera);else house.pong?.hidePrompt();
     renderer.render(house.scene,camera);
     if(training)house.boxingView?.renderGloves(renderer,camera);
   } else if(renderDirty) {renderer.render(house.scene,camera);renderDirty=false;}

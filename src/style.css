@@ -84,3 +84,13 @@ dialog{border:1px solid #d7e2ce26;box-shadow:0 30px 100px #0004;border-radius:4p
 .chalk-cell:disabled { cursor:default; }
 body.chalk-playing .map,body.chalk-playing .play-help,body.chalk-playing .movement,body.chalk-playing #crosshair,body.chalk-playing .location,body.chalk-playing .brand { visibility:hidden; }
 @media(max-height:500px){.chalk-caption {top:8px;padding:7px 14px}.chalk-caption p{font-size:12px}.chalk-actions{bottom:8px}.chalk-actions button{padding:7px 12px}}
+
+.pong-prompt {position:fixed;z-index:25;bottom:20%;left:50%;transform:translateX(-50%);padding:14px 22px;background:#192d2aeb;color:#dcebc9;border:1px solid #a6c993;border-radius:6px;cursor:pointer;min-height:48px;font:inherit;}
+.pong-ui {position:fixed;inset:0;z-index:35;touch-action:none;color:#e4efde;cursor:ns-resize;}
+.pong-ui[hidden],.pong-prompt[hidden]{display:none;}
+.pong-instructions {position:absolute;top:max(16px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);text-align:center;padding:12px 20px;border-radius:7px;background:#172826ef;width:max-content;max-width:90vw;font:12px monospace;letter-spacing:.08em;pointer-events:none;}
+.pong-instructions span {display:block;font:13px sans-serif;letter-spacing:0;margin-top:8px;}.pong-instructions p{margin:6px 0 0;letter-spacing:0;font:13px sans-serif;}
+.pong-actions{position:absolute;bottom:max(18px,env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);display:flex;gap:10px;}
+.pong-actions button{min-height:44px;padding:10px 20px;background:#172826;color:#e4efde;border:1px solid #a6c993;border-radius:5px;font:inherit;cursor:pointer;white-space:nowrap;}
+body.pong-playing .map,body.pong-playing .play-help,body.pong-playing .movement,body.pong-playing #crosshair,body.pong-playing .location,body.pong-playing .brand{visibility:hidden;}
+@media(max-height:500px){.pong-instructions{top:6px;padding:6px 12px}.pong-instructions span,.pong-instructions p{font-size:11px;margin-top:3px}.pong-actions{bottom:6px}}
