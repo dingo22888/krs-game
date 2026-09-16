@@ -28,13 +28,13 @@ export function prepareStudio(input:Record<FloorId,FloorPlan>){
  if(east-west<3||south-north<7)return result;
  dg.furniture=dg.furniture.filter(f=>!inPolygon((f.rect[0]+f.rect[2])/2,(f.rect[1]+f.rect[3])/2,room.polygon));room.surface='oak';
  const add=(kind:Furniture['kind'],rect:Rect,height:number,facing:Furniture['facing']='south',bottom?:number,workstation?:Furniture['workstation'])=>dg.furniture.push({kind,rect,height,facing,...(bottom===undefined?{}:{bottom}),...(workstation?{workstation}:{})});
- // Right of the entry: a long white desk under the eaves, its monitor facing
- // the centre aisle. The opposite gable holds the smaller L-shaped workspace.
+ // The wide desk sits in the west alcove between the corridor end and
+ // the outer wall. Its front faces east into the room.
  const length=Math.min(2.65,south-door.rect[3]-.48),z=south-.18-length/2;
- add('studioDesk',[east-1.22,z-length/2,east-.44,z+length/2],.76,'west',undefined,'wide');
- add('studioChair',[east-1.92,z-.32,east-1.30,z+.32],1.20,'east');
- add('rug',[west+.18,z-1.2,east-1.28,z+1.2],.015);
- add('studioShelf',[west+.12,south-1.8,west+.5,south-.2],.7,'east');
+ add('studioDesk',[west+.44,z-length/2,west+1.22,z+length/2],.76,'east',undefined,'wide');
+ add('studioChair',[west+1.30,z-.32,west+1.92,z+.32],1.20,'west');
+ add('rug',[west+1.28,z-1.2,east-.18,z+1.2],.015);
+ add('studioShelf',[east-.5,south-1.8,east-.12,south-.2],.7,'west');
  const cx=west+(east-west)*.60;
  add('studioDesk',[cx-.78,north+.20,cx+.78,north+.91],.75,'south',undefined,'standard');
  add('studioChair',[cx-.22,north+1.12,cx+.38,north+1.74],1.14,'north',undefined,'standard');
@@ -47,7 +47,7 @@ export function prepareStudio(input:Record<FloorId,FloorPlan>){
  }
  for(const zz of [north+1.8,south-1.8])add('studioLamp',[east-1.0,zz-.06,east-.9,zz+.06],.15,'west',1.95);
  if(dg.furniture.some(f=>f.kind==='studioDesk'&&dg.spawn.x>f.rect[0]-.2&&dg.spawn.x<f.rect[2]+.2&&dg.spawn.z>f.rect[1]-.2&&dg.spawn.z<f.rect[3]+.2))dg.spawn={x:door.rect[2]+.42,z:(door.rect[1]+door.rect[3])/2,yaw:Math.PI};
- for(const [xx,zz] of [[west+.50,north+.55],[west+.5,south-.48]])add('diningPlant',[xx-.14,zz-.14,xx+.14,zz+.14],.60);
+ for(const [xx,zz] of [[west+.50,north+.55],[east-.7,south-.48]])add('diningPlant',[xx-.14,zz-.14,xx+.14,zz+.14],.60);
  return result;
 }
 
