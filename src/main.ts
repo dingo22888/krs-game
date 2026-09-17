@@ -1,3 +1,5 @@
+import { account } from './services/account.ts';
+import { Scoreboard } from './services/scoreboard.ts';
 import './style.css';
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -20,10 +22,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <form id="auth-form" class="auth-card">
       <p class="eyebrow">KRS GAME <span>PRIVATER ZUGANG</span></p>
       <h1 id="auth-title">Kraus<span>Mansion.</span></h1>
-      <p class="intro">Dieses Spiel ist nicht öffentlich freigegeben. Bitte gib das Zugangspasswort ein.</p>
+      <p class="intro" id="auth-intro">Dieses Spiel ist privat. Bitte melde dich an.</p>
+      <div id="auth-email-row" hidden><label class="auth-label" for="auth-email">E-Mail</label><input id="auth-email" class="auth-password" type="email" autocomplete="username" /></div>
       <label class="auth-label" for="auth-password">Passwort</label>
       <input id="auth-password" class="auth-password" type="password" autocomplete="current-password" required />
       <button class="start" type="submit"><span>Spiel öffnen</span><span aria-hidden="true">↗</span></button>
+      <button type="button" id="auth-recover" hidden>Passwort vergessen?</button>
       <p id="auth-status" class="status" role="status"></p>
     </form>
   </section>
@@ -61,6 +65,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="retry-load" type="button" hidden>Erneut laden</button>
     <div class="controls"><div><kbd>W A S D</kbd><span>Bewegen</span></div><div><kbd>Maus</kbd><span>Umsehen</span></div><div><kbd>Leertaste</kbd><span>Springen</span></div><div><kbd>Strg / Ctrl</kbd><span>Ducken · halten</span></div><div><kbd>Shift</kbd><span>Schnell gehen · halten</span></div><div><kbd>Esc</kbd><span>Pause / Menü</span></div></div>
     <div class="menu-bottom"><label for="sensitivity">Mausempfindlichkeit</label><input id="sensitivity" type="range" min="0.6" max="2.4" value="1" step="0.1" /><label for="sound-volume">Lautstärke <output id="sound-volume-value">55 %</output></label><input id="sound-volume" type="range" min="0" max="100" value="55" step="5" /><button id="sound-mute" type="button" aria-pressed="false">Ton stummschalten</button><button id="reset" type="button" disabled>Zum Startpunkt</button><button id="alternate-spawn" type="button" hidden></button></div>
+    <div id="account-menu" hidden><label id="player-name-label" for="player-name">Name in der Rangliste</label><input id="player-name" maxlength="24" minlength="2" autocomplete="nickname" /><button id="save-player" type="button">Name speichern</button><button id="show-scores" type="button">Highscores</button><button id="sign-out" type="button">Abmelden</button></div>
     <p id="model-note" class="model-note">Nach der Anmeldung wird das private Hausmodell automatisch geladen.</p>
     <fieldset class="input-settings"><legend>Steuerung</legend>
       <label for="input-mode">Eingabe</label><select id="input-mode"><option value="auto">Automatisch</option><option value="touch">Touch / Joystick</option><option value="mouse">Maus / Tastatur</option></select>
@@ -118,6 +123,8 @@ let cameraEye = 1.68;
 let previousHeight:number = 1.8;
 const boxingHud=$('boxing-hud');
 const gameAudio=new GameAudio();
+const scores=new Scoreboard();
+scores.onShow=()=>{if(playing)pause();};
 const touch=new TouchControls($('touch-controls'),(dx,dy)=>{
   if(!playing||!touchMode||activeActivity())return;
   const scale=3/Math.max(320,innerHeight)*touchSensitivity;
@@ -166,25 +173,41 @@ function showAuthGate(message = '') {
   if (menu.open) menu.close();
   authStatus.textContent = message;
   authGate.hidden = false;
+  $('auth-email-row').hidden=account.mode!=='supabase'||account.needsPassword;
+  $<HTMLInputElement>('auth-email').required=account.mode==='supabase'&&!account.needsPassword;
+  $('auth-recover').hidden=account.mode!=='supabase'||account.needsPassword;
+  authPassword.autocomplete=account.needsPassword?'new-password':'current-password';
+  authPassword.minLength=account.needsPassword?12:1;
+  $('auth-intro').textContent=account.needsPassword?'Lege dein persönliches Passwort fest (mindestens 12 Zeichen).':account.mode==='supabase'?'Melde dich mit deinem freigeschalteten Konto an.':'Bitte gib das gemeinsame Zugangspasswort ein.';
   authPassword.focus();
 }
 
-async function checkAuthentication(): Promise<boolean> {
-  if (import.meta.env.DEV) return true;
-  try {
-    const response = await fetch('/api/auth', { credentials: 'include', cache: 'no-store' });
-    authenticated = response.ok;
-  } catch {
-    authenticated = false;
+account.onLocked=message=>{
+  const hadHouse=ready;
+  if(hadHouse){
+    try{localStorage.removeItem(MODEL_STORAGE_KEY);}catch{/* Optional storage. */}
+    releaseInput();scores.cancel();cancelAnimationFrame(frameId);
+    floors=testFloors;customModel=false;ready=false;playing=false;
+    // Reload drops every scene/model reference; never leave a private scene behind the login.
+    location.reload();return;
   }
-  if (!authenticated) showAuthGate();
-  return authenticated;
+  showAuthGate(message);
+};
+async function checkAuthentication(): Promise<boolean> {
+  await account.configure();
+  authenticated=await account.check();
+  if(!authenticated) {if(authGate.hidden)showAuthGate();return false;}
+  $('account-menu').hidden=account.mode==='local';
+  $('show-scores').hidden=account.mode!=='supabase';
+  $('player-name-label').hidden=$('player-name').hidden=$('save-player').hidden=account.mode!=='supabase';
+  $<HTMLInputElement>('player-name').value=account.displayName;
+  return true;
 }
 
 async function loadRemoteModel(): Promise<boolean> {
-  if (import.meta.env.DEV) return true;
-  const response = await fetch('/api/house-model', { credentials: 'include', cache: 'no-store' });
-  if (response.status === 401) {
+  if (account.mode === 'local') return true;
+  const response = await account.request('/api/house-model');
+  if (response.status === 401 || response.status === 403) {
     authenticated = false;
     showAuthGate('Die Sitzung ist abgelaufen. Bitte erneut anmelden.');
     return false;
@@ -226,6 +249,7 @@ function updateMap() {
 }
 
 function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
+  scores.cancel();
   const plan = floors[id];
   const nextHouse = createHouseScene(connectedBuilding(floors)?floorOrder.map(id=>floors[id]):[plan]);
   const [ox,oy,oz]=origin(plan);
@@ -250,8 +274,9 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
       if(!touchMode&&document.pointerLockElement!==canvas)pause();else updateInputUI();
     };
   }
+  scores.bind(house);
   gameAudio.reset();
-  if(house.boxing)house.boxing.onHit=hit=>gameAudio.hit(hit);
+  if(house.boxing)house.boxing.onHit=hit=>{gameAudio.hit(hit);scores.hit(hit);};
   house.boxingView?.capture();house.boxingView?.update(1);
   boxingHud.hidden=true;
   yaw = spawn.yaw;pitch = -.04;cameraEye=1.68;
@@ -277,6 +302,7 @@ function updateFloorLabel(id:FloorId) {
 }
 
 function pause() {
+  scores.cancelBoxing();
   house?.chalkboard?.cancel(camera);house?.pong?.cancel(camera);house?.pong?.hidePrompt();
   gameAudio.setPlaying(false);
   playing=false;mouseStartPending=false;keys.clear();touch.setEnabled(false);accumulator=0;player?.stop();
@@ -418,6 +444,7 @@ function animate(time:number) {
   frameId=requestAnimationFrame(animate);
   const dt = lastTime ? Math.min((time-lastTime)/1000,.1) : 0;lastTime=time;
   if(document.hidden)return;
+  scores.tick(playing);
   if(playing&&activeActivity()){
     activeActivity()!.update(camera,dt);renderer.render(house.scene,camera);return;
   }
@@ -479,7 +506,7 @@ async function init() {
     renderer.shadowMap.type=THREE.PCFShadowMap;applyGraphics();
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
-    if (import.meta.env.DEV) {
+    if (account.mode === 'local') {
       setFloor('eg');
       try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
     } else if (!await loadRemoteModel()) return;
@@ -514,25 +541,26 @@ window.addEventListener('pageshow',event=>{if(event.persisted)location.reload();
 void init();
 
 authForm.addEventListener('submit', async event => {
-  event.preventDefault();
-  const password = authPassword.value;
-  authPassword.disabled = true;
-  authStatus.textContent = 'Anmeldung wird geprüft …';
+  event.preventDefault();authPassword.disabled=true;
+  authStatus.textContent='Anmeldung wird geprüft …';
   try {
-    const response = await fetch('/api/auth', { method: 'POST', credentials: 'include', headers: {'Content-Type':'application/json'}, body: JSON.stringify({password}) });
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({})) as {error?:string};
-      authStatus.textContent = data.error ?? 'Anmeldung fehlgeschlagen.';
-      authPassword.select();
-      return;
-    }
-    authenticated = true;
-    authPassword.value = '';
-    authGate.hidden = true;
-    await init();
-  } catch {
-    authStatus.textContent = 'Der Authentifizierungsdienst ist nicht erreichbar.';
-  } finally {
-    authPassword.disabled = false;
-  }
+    await account.signIn($<HTMLInputElement>('auth-email').value.trim(),authPassword.value);
+    authPassword.value='';
+    if(!await checkAuthentication())return;
+    authGate.hidden=true;await init();
+  } catch(error) {authStatus.textContent=error instanceof Error?error.message:'Anmeldung fehlgeschlagen.';}
+  finally {authPassword.disabled=false;}
+});
+$('auth-recover').addEventListener('click',async()=>{
+  try {await account.recover($<HTMLInputElement>('auth-email').value.trim());authStatus.textContent='Falls ein Konto existiert, erhältst du eine E-Mail zum Zurücksetzen.';}
+  catch(error){authStatus.textContent=error instanceof Error?error.message:'Versand fehlgeschlagen.';}
+});
+$('sign-out').addEventListener('click',()=>{releaseInput();void account.signOut();});
+$('show-scores').addEventListener('click',()=>scores.show());
+$('save-player').addEventListener('click',async()=>{
+  try {
+    const response=await account.request('/api/highscores',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayName:$<HTMLInputElement>('player-name').value})});
+    const data=await response.json();if(!response.ok)throw new Error(data.error);
+    account.displayName=data.displayName;status.textContent='Anzeigename gespeichert.';
+  } catch(error){status.textContent=error instanceof Error?error.message:'Speichern fehlgeschlagen.';}
 });

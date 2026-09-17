@@ -1,3 +1,4 @@
+import { authMode, publicConfig, requireMember, errorResponse } from '../src/server/supabase.ts';
 const SESSION_COOKIE = 'krs_game_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
@@ -55,6 +56,19 @@ function json(body: unknown, status = 200, extraHeaders?: HeadersInit): Response
 export default {
   async fetch(request: Request): Promise<Response> {
     const method = request.method.toUpperCase();
+    try {
+      const mode = authMode();
+      if (method === 'GET' && new URL(request.url).searchParams.has('config')) {
+        return json(mode === 'supabase' ? { mode, ...publicConfig() } : { mode });
+      }
+      if (mode === 'supabase') {
+        if (method !== 'GET') return json({ error: 'Bitte die persönliche Anmeldung verwenden.' }, 405);
+        const { userId, db } = await requireMember(request);
+        const profile = await db.from('player_profiles').select('display_name').eq('user_id', userId).maybeSingle();
+        if (profile.error) return json({ error: 'Profil konnte nicht geladen werden.' }, 503);
+        return json({ authenticated: true, userId, displayName: profile.data?.display_name ?? 'Spieler' });
+      }
+    } catch (error) { return errorResponse(error); }
     const configured = configuredPassword();
     if (!configured) return json({ authenticated: false, error: 'GAME_PASSWORD ist in Vercel noch nicht gesetzt.' }, 503);
 

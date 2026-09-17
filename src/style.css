@@ -94,3 +94,18 @@ body.chalk-playing .map,body.chalk-playing .play-help,body.chalk-playing .moveme
 .pong-actions button{min-height:44px;padding:10px 20px;background:#172826;color:#e4efde;border:1px solid #a6c993;border-radius:5px;font:inherit;cursor:pointer;white-space:nowrap;}
 body.pong-playing .map,body.pong-playing .play-help,body.pong-playing .movement,body.pong-playing #crosshair,body.pong-playing .location,body.pong-playing .brand{visibility:hidden;}
 @media(max-height:500px){.pong-instructions{top:6px;padding:6px 12px}.pong-instructions span,.pong-instructions p{font-size:11px;margin-top:3px}.pong-actions{bottom:6px}}
+
+#account-menu{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:18px 0;padding:14px 0;border-top:1px solid #52635b}
+#account-menu[hidden]{display:none}
+#account-menu input{max-width:180px;padding:9px;background:#edf0e6;color:#182622;border:1px solid #798b7a;border-radius:4px}
+#account-menu button,#auth-recover,.leaderboard button{padding:10px 14px;min-height:44px;cursor:pointer}
+#auth-email-row{margin-bottom:14px}.auth-card #auth-recover{margin-top:10px;width:100%}
+.score-notice{position:fixed;left:50%;transform:translateX(-50%);top:80px;z-index:40;max-width:min(650px,92vw);padding:10px 16px;background:#192822f2;color:#e5efd9;border:1px solid #a8c583;border-radius:8px;font-size:13px;display:flex;align-items:center;gap:12px}
+.score-notice[hidden]{display:none}.score-notice button{pointer-events:auto;min-height:36px;cursor:pointer}
+.boxing-ranked{pointer-events:auto;min-height:44px;padding:7px 12px;background:#d4fa72;color:#1b2520;border:0;border-radius:4px;font:inherit;cursor:pointer}
+.leaderboard{background:#192822;color:#eef1e8;width:min(650px,92vw);max-height:85dvh;padding:24px;border:1px solid #8da773;border-radius:10px}
+.leaderboard::backdrop{background:#0009}.leaderboard select{padding:10px;margin-left:10px}.leaderboard table{width:100%;border-collapse:collapse;margin:18px 0}.leaderboard th,.leaderboard td{text-align:left;padding:10px 7px;border-bottom:1px solid #44584e}.leaderboard .own-score{color:#d4fa72;font-weight:bold}.leaderboard p{font-size:13px;line-height:1.5}
+.pong-actions,.chalk-actions{flex-wrap:wrap;justify-content:center;max-width:95vw;width:max-content}
+@media(max-height:500px){.score-notice{top:72px;font-size:11px;padding:6px 9px}.pong-actions button,.chalk-actions button{font-size:12px;padding:6px 10px}}
+
+.auth-gate{z-index:60}

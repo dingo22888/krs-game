@@ -1,39 +1,22 @@
 # Supabase Auth und Highscores – Umsetzungsplan
 
-Stand: 17.09.2026. Plan, noch keine Datenbankänderung oder Auth-Umstellung.
+Stand: 17.09.2026. Eigenes Projekt `krs-game` in Frankfurt angelegt. Tabellen,
+Serverzugang, Auth-Oberfläche und Wertungen implementiert; Produktionsumschaltung
+steht bis zum ersten freigeschalteten Konto noch aus. Einrichtung: [SUPABASE-SETUP.md](SUPABASE-SETUP.md).
 Mellis neues Minispiel ist auf Wunsch zurückgestellt. Die begonnenen Änderungen
 wurden zurückgenommen. Dieser Plan umfasst Boxtraining, Tic-Tac-Toe und Pong.
 
 ## 1. Projektentscheidung
 
-Empfehlung: eigenes Supabase-Projekt `krs-game`, Region EU. Das trennt Daten,
-Benutzer, Auth-Konfiguration und Betriebsrisiken von Hometrack. Free erlaubt
-aktuell zwei aktive Projekte über die relevanten Organisationen hinweg; ob ein
-Platz frei ist, wurde nicht im Konto geprüft. Free-Projekte können nach einer
-Woche Inaktivität pausiert werden.
-
-Hometrack mitzubenutzen ist möglich, wenn kein zweiter Platz frei ist und ein
-neues kostenpflichtiges Projekt vermieden werden soll. Dann:
-
-- Spieltabellen in eigenem Schema `krs_game`, Migrationen nur für dieses Schema.
-- Gemeinsames Supabase Auth: Schema-Trennung schafft keine getrennten Benutzer.
-- Eigene Spielmitgliedschaft erforderlich; ein Hometrack-Login gibt nicht
-  automatisch Zugang zum Hausspiel und umgekehrt.
-- Vorher vorhandene Tabellenrechte, RLS-Regeln, Auth-Trigger, Registrierungswege,
-  Redirect-URLs und Mailvorlagen in Hometrack prüfen. Regeln, die pauschal alle
-  angemeldeten Benutzer zulassen, könnten auch Spielkonten Zugriff geben.
-- Hometrack-Site-URL und Auth-Einstellungen nicht ungeprüft überschreiben.
-- Gemeinsam genutzte Ressourcen und Backups bleiben gekoppelt.
-
-Die tatsächliche Hometrack-Konfiguration wurde nicht inspiziert. Die Empfehlung
-beruht auf der gewünschten Trennung beider Anwendungen.
+Entschieden und angelegt: eigenes Supabase-Projekt `krs-game`, Frankfurt
+(`eu-central-1`). Hometrack wird dafür nicht verwendet. Benutzer, Auth-Einstellungen,
+Spieltabellen und Freischaltungen gehören ausschließlich zum neuen Projekt.
 
 ## 2. Zugang zum privaten Haus
 
 - E-Mail und Passwort mit Supabase Auth; Anzeigename für Ranglisten.
 - Nur eingeladene/freigeschaltete Benutzer. Im eigenen Projekt öffentliche und
-  anonyme Registrierung abschalten. Bei geteiltem Projekt bestehende Registrierung
-  erhalten, Zugang zum Spiel über explizite Mitgliedschaft beschränken.
+  anonyme Registrierung abschalten. Zugang zum Spiel zusätzlich über explizite Mitgliedschaft beschränken.
 - Einladung, Passwort setzen, Anmeldung, Sitzungsverlängerung, Passwort vergessen,
   Abmelden. Kein zusätzlicher Google-Login im ersten Schritt.
 - Eigenen SMTP-Versand konfigurieren: Supabases Standardversand ist für Tests und

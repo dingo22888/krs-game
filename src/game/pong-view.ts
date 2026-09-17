@@ -16,6 +16,8 @@ export class PongView {
  private savedPosition=new THREE.Vector3();private savedRotation=new THREE.Quaternion();private savedFov=74;
  private seatedPosition=new THREE.Vector3();private seatedRotation=new THREE.Quaternion();
  private keys=new Set<string>();private paddle=.5;private running=false;private ray=new THREE.Raycaster();private lastCamera?:THREE.PerspectiveCamera;
+ onResult=(_result:{player:number;opponent:number})=>{};onCancel=()=>{};
+ startRanked(){this.game.reset();this.paddle=.5;this.running=true;this.updateStatus();this.draw();}
  available=false;onEnter=()=>{};onExit=()=>{};onReturn=()=>{};
  constructor(plan:FloorPlan,f:Furniture,private scene:THREE.Scene){
   const {w,point,angle}=studioFrame(f),size=monitorSize(f),p=point(w/2,.232),[ox,oy,oz]=origin(plan);
@@ -58,7 +60,7 @@ export class PongView {
   const c=camera.clone();c.position.copy(this.seatedPosition);c.lookAt(this.target);this.seatedRotation.copy(c.quaternion);
   this.phase='in';this.time=0;this.focus=0;this.running=false;this.keys.clear();this.ui.hidden=false;this.hidePrompt();document.body.classList.add('pong-playing');this.updateStatus();this.onEnter();
  }
- leave(){if(!this.active||this.phase==='out')return;this.exitFrom=this.focus;this.phase='out';this.time=0;this.running=false;this.keys.clear();this.onExit();}
+ leave(){if(!this.active||this.phase==='out')return;this.onCancel();this.exitFrom=this.focus;this.phase='out';this.time=0;this.running=false;this.keys.clear();this.onExit();}
  private updateStatus(){this.status.textContent=this.game.winner||`${this.game.scores[0]} : ${this.game.scores[1]} · ${this.running?'Erster mit 5 Punkten gewinnt.':'Bereit für eine Büropause? Du spielst links.'}`;this.playButton.textContent=this.game.winner?'Neue Partie':this.running?'Pause':'Spiel starten';}
  update(camera:THREE.PerspectiveCamera,dt:number){
   this.lastCamera=camera;if(!this.active)return;
@@ -73,7 +75,7 @@ export class PongView {
    const dir=Number(this.keys.has('KeyS')||this.keys.has('ArrowDown'))-Number(this.keys.has('KeyW')||this.keys.has('ArrowUp'));
    if(dir)this.paddle=THREE.MathUtils.clamp(this.paddle+dir*dt*1.15,.1,.9);
    const old=this.game.scores.join();this.game.step(dt,this.paddle);
-   if(old!==this.game.scores.join()||this.game.winner){this.updateStatus();if(this.game.winner)this.running=false;}
+   if(old!==this.game.scores.join()||this.game.winner){this.updateStatus();if(this.game.winner){this.running=false;this.onResult({player:this.game.scores[0],opponent:this.game.scores[1]});}}
    this.draw();
   }
  }
@@ -88,6 +90,6 @@ export class PongView {
   if(!this.active||g.winner){c.fillStyle='#0b171ce8';c.fillRect(x+125,y+140,w-250,100);c.fillStyle='#d8e9df';c.textAlign='center';c.font='30px monospace';c.fillText(g.winner||'HINSETZEN & LOSLEGEN',x+w/2,y+200);c.textAlign='left';}
   this.texture.needsUpdate=true;
  }
- cancel(camera:THREE.PerspectiveCamera){if(this.active){camera.position.copy(this.savedPosition);camera.quaternion.copy(this.savedRotation);camera.fov=this.savedFov;camera.updateProjectionMatrix();}this.phase='idle';this.running=false;this.keys.clear();this.ui.hidden=true;this.hidePrompt();document.body.classList.remove('pong-playing');this.draw();}
+ cancel(camera:THREE.PerspectiveCamera){this.onCancel();if(this.active){camera.position.copy(this.savedPosition);camera.quaternion.copy(this.savedRotation);camera.fov=this.savedFov;camera.updateProjectionMatrix();}this.phase='idle';this.running=false;this.keys.clear();this.ui.hidden=true;this.hidePrompt();document.body.classList.remove('pong-playing');this.draw();}
  dispose(){this.ui.remove();this.prompt.remove();this.texture.dispose();document.body.classList.remove('pong-playing');}
 }

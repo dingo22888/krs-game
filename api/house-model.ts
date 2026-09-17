@@ -1,3 +1,4 @@
+import { authMode, requireMember, errorResponse } from '../src/server/supabase.ts';
 import { get } from '@vercel/blob';
 
 const MAX_MODEL_BYTES = 512_000;
@@ -83,7 +84,10 @@ async function readBlob(url:string) {
 export default {
   async fetch(request: Request): Promise<Response> {
     if (request.method.toUpperCase() !== 'GET') return json({ error: 'Methode nicht erlaubt.' }, 405);
-    if (!await isAuthenticated(request)) return json({ error: 'Anmeldung erforderlich.' }, 401);
+    try {
+      if (authMode() === 'supabase') await requireMember(request);
+      else if (!await isAuthenticated(request)) return json({ error: 'Anmeldung erforderlich.' }, 401);
+    } catch (error) { return errorResponse(error); }
 
     const url = process.env.HOUSE_MODEL_URL?.trim();
     if (!url) {
