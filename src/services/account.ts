@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { cleanAuthCallbackUrl, passwordSetupRequested } from './auth-url.ts';
 
 class GameAccount {
   mode: 'local' | 'password' | 'supabase' = 'local';
@@ -15,15 +16,20 @@ class GameAccount {
     if (!response.ok) throw new Error(data.error || 'Anmeldung konnte nicht vorbereitet werden.');
     this.mode = data.mode;
     if (this.mode === 'supabase') {
-      this.needsPassword = /(?:type=)(?:recovery|invite)/.test(location.hash) || new URLSearchParams(location.search).has('set-password');
+      this.needsPassword = passwordSetupRequested(new URL(location.href));
       const { createClient } = await import('@supabase/supabase-js');
       this.client = createClient(data.url, data.publishableKey);
       this.client.auth.onAuthStateChange((event) => {
-        if (event === 'PASSWORD_RECOVERY') { this.needsPassword = true; this.onLocked('Bitte lege dein neues Passwort fest.'); }
+        if (event === 'PASSWORD_RECOVERY' && !this.needsPassword) {
+          this.needsPassword = true;
+          history.replaceState(null, '', cleanAuthCallbackUrl(new URL(location.href), true));
+          this.onLocked('Bitte lege dein neues Passwort fest.');
+        }
         if (event === 'SIGNED_OUT') this.onLocked('Du bist abgemeldet.');
       });
       // Wait for URL session processing before deciding whether to show login.
       await this.client.auth.getSession();
+      history.replaceState(null, '', cleanAuthCallbackUrl(new URL(location.href), this.needsPassword));
     }
     this.initialized = true;
   }
@@ -44,7 +50,7 @@ class GameAccount {
     if (this.mode === 'local') return true;
     if (this.needsPassword) return false;
     const response = await this.request('/api/auth');
-    if (!response.ok) return false;
+    if (!response.ok || this.needsPassword) return false;
     const data = await response.json(); this.displayName = data.displayName || 'Spieler';
     return true;
   }

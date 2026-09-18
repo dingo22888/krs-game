@@ -26,7 +26,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
       <div id="auth-email-row" hidden><label class="auth-label" for="auth-email">E-Mail</label><input id="auth-email" class="auth-password" type="email" autocomplete="username" /></div>
       <label class="auth-label" for="auth-password">Passwort</label>
       <input id="auth-password" class="auth-password" type="password" autocomplete="current-password" required />
-      <button class="start" type="submit"><span>Spiel öffnen</span><span aria-hidden="true">↗</span></button>
+      <button class="start" type="submit"><span id="auth-submit-label">Spiel öffnen</span><span aria-hidden="true">↗</span></button>
       <button type="button" id="auth-recover" hidden>Passwort vergessen?</button>
       <p id="auth-status" class="status" role="status"></p>
     </form>
@@ -178,11 +178,13 @@ function showAuthGate(message = '') {
   $('auth-recover').hidden=account.mode!=='supabase'||account.needsPassword;
   authPassword.autocomplete=account.needsPassword?'new-password':'current-password';
   authPassword.minLength=account.needsPassword?12:1;
+  $('auth-submit-label').textContent=account.needsPassword?'Passwort speichern':'Spiel öffnen';
   $('auth-intro').textContent=account.needsPassword?'Lege dein persönliches Passwort fest (mindestens 12 Zeichen).':account.mode==='supabase'?'Melde dich mit deinem freigeschalteten Konto an.':'Bitte gib das gemeinsame Zugangspasswort ein.';
   authPassword.focus();
 }
 
 account.onLocked=message=>{
+  authenticated=false;
   const hadHouse=ready;
   if(hadHouse){
     try{localStorage.removeItem(MODEL_STORAGE_KEY);}catch{/* Optional storage. */}
@@ -501,15 +503,16 @@ function animate(time:number) {
 async function init() {
   try {
     if (!await checkAuthentication()) return;
-    if (!menu.open) menu.showModal();
     renderer = new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
     renderer.shadowMap.type=THREE.PCFShadowMap;applyGraphics();
     renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.13;
     await RAPIER.init();
+    if (!authenticated || account.needsPassword) {showAuthGate();return;}
     if (account.mode === 'local') {
       setFloor('eg');
       try {const saved=localStorage.getItem(MODEL_STORAGE_KEY);if(saved){loadModel(saved);$<HTMLInputElement>('remember-model').checked=true;}} catch {status.textContent='Das gespeicherte Modell konnte nicht geladen werden. Bitte die Hausdatei erneut auswählen.';}
     } else if (!await loadRemoteModel()) return;
+    if (!authenticated || account.needsPassword) {showAuthGate();return;}
     if (!menu.open) menu.showModal();
     ready=true;updateInputUI();reset.disabled=false;
     $<HTMLButtonElement>('import-model').disabled=false;
