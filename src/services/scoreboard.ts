@@ -25,7 +25,13 @@ export class Scoreboard {
   private selection=document.createElement('select');
   private listGeneration=0;
   private boxingButton?:HTMLButtonElement;
+  private boxingBegin?:()=>void;
+  private boxingStarting=false;
+  private bufferedHits:BoxingHit[]=[];
+  private suspendedAt=0;
   onShow=()=>{};
+  onClose=async()=>true;
+  get isOpen(){return this.dialog.open;}
   constructor(){
     this.notice.className='score-notice';this.notice.hidden=true;this.notice.setAttribute('role','status');
     this.retry.type='button';this.retry.textContent='Erneut speichern';this.retry.hidden=true;
@@ -37,10 +43,17 @@ export class Scoreboard {
     const title=document.createElement('h2');title.textContent='Hausrekorde';
     const label=document.createElement('label');label.textContent='Minispiel ';label.append(this.selection);
     for(const game of Object.keys(labels) as Game[]){const option=document.createElement('option');option.value=game;option.textContent=labels[game];this.selection.append(option);}
-    const done=document.createElement('button');done.type='button';done.textContent='Zurück';done.addEventListener('click',()=>this.dialog.close());
+    const done=document.createElement('button');done.type='button';done.textContent='Weiter spielen';
+    const closeScores=async()=>{
+      if(!await this.onClose()){done.textContent='Zum Fortsetzen hier klicken';return;}
+      if(this.run&&this.suspendedAt)this.run.start+=performance.now()-this.suspendedAt;
+      this.suspendedAt=0;this.dialog.close();
+    };
+    done.addEventListener('click',()=>{void closeScores();});
+    this.dialog.addEventListener('cancel',event=>{event.preventDefault();void closeScores();});
     this.dialog.append(title,label,this.entries,done);document.body.append(this.dialog);
     this.selection.addEventListener('change',()=>{void this.loadList();});
-    document.addEventListener('keydown',e=>{if(e.code==='KeyB'&&!e.repeat&&document.pointerLockElement&&this.boxingButton&&!this.boxingButton.hidden&&!this.boxingButton.disabled){e.preventDefault();this.boxingButton.click();}});
+    document.addEventListener('keydown',e=>{if(!this.isOpen&&e.code==='KeyB'&&!e.repeat&&document.pointerLockElement&&this.boxingButton&&!this.boxingButton.hidden&&!this.boxingButton.disabled){e.preventDefault();this.boxingButton.click();}});
   }
   private message(text:string){this.noticeText.textContent=text;this.notice.hidden=false;}
   private button(container:HTMLElement,game:Game,begin:()=>void){
@@ -49,7 +62,7 @@ export class Scoreboard {
     button.addEventListener('click',()=>{void this.start(game,begin);});container.prepend(button);this.buttons.push(button);return button;
   }
   bind(house:{pong?:PongView;chalkboard?:Chalkboard;boxing?:Boxing}){
-    this.buttons.forEach(b=>b.remove());this.buttons=[];this.boxingButton=undefined;
+    this.buttons.forEach(b=>b.remove());this.buttons=[];this.boxingButton=undefined;this.boxingBegin=undefined;
     if(account.mode!=='supabase')return;
     if(house.pong){
       const pong=house.pong;this.button(pong.ui.querySelector('.pong-actions')!,'pong',()=>pong.startRanked());
@@ -58,8 +71,15 @@ export class Scoreboard {
     if(house.chalkboard){
       const chalk=house.chalkboard;this.button(chalk.ui.querySelector('.chalk-actions')!,'tic-tac-toe',()=>chalk.startChallenge());
       chalk.onChallengeResult=result=>{void this.finish('tic-tac-toe',result);};chalk.onCancel=()=>this.cancelGame('tic-tac-toe');
+      chalk.onNewChallenge=()=>{
+        chalk.setPreparing(true);
+        void this.start('tic-tac-toe',()=>chalk.startChallenge()).finally(()=>chalk.setPreparing(false));
+      };
+      const entered=chalk.onEnter;
+      chalk.onEnter=()=>{entered();chalk.onNewChallenge!();};
     }
     if(house.boxing){
+      this.boxingBegin=()=>house.boxing!.cancel();
       this.boxingButton=this.button(document.getElementById('boxing-hud')!,'boxing',()=>house.boxing!.cancel());
       this.boxingButton.className='boxing-ranked';
     }
@@ -72,17 +92,29 @@ export class Scoreboard {
     try {
       const response=await account.request('/api/highscores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'start',game})});
       const data=await response.json();if(!response.ok)throw new Error(data.error);
+      if(typeof data.runId!=='string'||!data.runId)throw new Error('Wertung konnte nicht vorbereitet werden. Bitte erneut starten.');
       if(generation!==this.generation)return;
       this.run={id:data.runId,game,start:performance.now(),hits:0,combo:0};begin();
+      if(this.isOpen)this.suspendedAt=performance.now();
       this.message(`${labels[game]} · Wertung läuft${game==='tic-tac-toe'?' · 10 Partien':''}`);
     }catch(error){if(generation===this.generation)this.message(error instanceof Error?error.message:'Wertung konnte nicht gestartet werden.');}
     finally{if(generation===this.generation){this.busy=false;this.buttons.forEach(b=>b.disabled=Boolean(this.run));}}
   }
   hit(hit:BoxingHit){
+    if(this.boxingStarting){this.bufferedHits.push(hit);return;}
+    if(!this.run&&this.boxingBegin&&!this.pending&&!this.busy){
+      this.boxingStarting=true;this.bufferedHits=[hit];
+      void this.start('boxing',()=>{
+        const hits=this.bufferedHits;this.bufferedHits=[];this.boxingStarting=false;
+        for(const buffered of hits)this.hit(buffered);
+      }).finally(()=>{this.boxingStarting=false;this.bufferedHits=[];});
+      return;
+    }
     if(this.run?.game!=='boxing'||performance.now()-this.run.start>=60000)return;
-    this.run.hits++;this.run.combo=Math.max(this.run.combo,hit.combo);
+    this.run.hits++;this.run.combo=Math.max(this.run.combo,Math.min(this.run.hits,hit.combo));
   }
   tick(playing:boolean){
+    if(this.isOpen)return;
     if(this.boxingButton)this.boxingButton.hidden=!playing||document.getElementById('boxing-hud')!.hidden;
     if(this.run?.game!=='boxing')return;
     if(!playing){this.cancelBoxing();return;}
@@ -114,7 +146,12 @@ export class Scoreboard {
     this.run=undefined;if(!this.pending)this.busy=false;
     this.buttons.forEach(b=>b.disabled=false);
   }
-  show(){this.onShow();if(!this.dialog.open)this.dialog.showModal();void this.loadList();}
+  show(game?:Game){
+    if(game)this.selection.value=game;
+    else if(this.run)this.selection.value=this.run.game;
+    if(!this.dialog.open){this.suspendedAt=performance.now();this.dialog.showModal();this.onShow();}
+    void this.loadList();
+  }
   private async loadList(){
     const generation=++this.listGeneration,game=this.selection.value as Game;this.entries.textContent='Rangliste wird geladen …';
     try {

@@ -16,6 +16,7 @@ test('Supabase APIs fail closed, validate the user remotely and require active m
   process.env.GAME_AUTH_MODE='supabase';process.env.SUPABASE_URL='https://fixture.supabase.co';
   process.env.SUPABASE_PUBLISHABLE_KEY='sb_publishable_test';process.env.SUPABASE_SECRET_KEY='sb_secret_never_public';
   let membership=false,valid=true,anonymous=false,calls=0;
+  const runId='22222222-2222-4222-8222-222222222222';
   globalThis.fetch=async(input,init)=>{
     calls++;const url=String(input);
     if(url.includes('/auth/v1/user')){
@@ -25,6 +26,15 @@ test('Supabase APIs fail closed, validate the user remotely and require active m
     if(url.includes('/rest/v1/game_members'))return Response.json(membership?{user_id:'11111111-1111-4111-8111-111111111111'}:null);
     if(url.includes('/rest/v1/player_profiles'))return Response.json({display_name:'Testspieler'});
     if(url.includes('/rest/v1/rpc/game_leaderboard'))return Response.json([]);
+    if(url.includes('/rest/v1/rpc/start_game_run')){
+      const row={id:runId,expires_at:'2099-01-01T00:00:00Z'};
+      return Response.json(new Headers(init?.headers).get('Accept')==='application/vnd.pgrst.object+json'?row:[row]);
+    }
+    if(url.includes('/rest/v1/game_runs'))return Response.json({game:'tic-tac-toe'});
+    if(url.includes('/rest/v1/rpc/finish_game_run')){
+      const row={score:14,secondary_score:0};
+      return Response.json(new Headers(init?.headers).get('Accept')==='application/vnd.pgrst.object+json'?row:[row]);
+    }
     throw new Error('Unexpected upstream '+url);
   };
   const request=(path:string,headers:Record<string,string>={})=>new Request('https://game.test/api/'+path,{headers});
@@ -51,6 +61,14 @@ test('Supabase APIs fail closed, validate the user remotely and require active m
   });
   await t.test('an invalid auth mode cannot fall back to legacy password',async()=>{
     process.env.GAME_AUTH_MODE='typo';assert.equal((await model.fetch(request('house-model',{cookie}))).status,503);
+  });
+  await t.test('start and finish return a usable run ID and saved score for composite RPC rows',async()=>{
+    process.env.GAME_AUTH_MODE='supabase';valid=true;anonymous=false;membership=true;
+    const post=(body:unknown)=>scores.fetch(new Request('https://game.test/api/highscores',{method:'POST',headers:{authorization:'Bearer test-token','Content-Type':'application/json'},body:JSON.stringify(body)}));
+    const started=await post({action:'start',game:'tic-tac-toe'});
+    assert.equal(started.status,200);assert.equal((await started.json()).runId,runId);
+    const saved=await post({action:'finish',game:'tic-tac-toe',runId,result:{wins:3,draws:5,losses:2}});
+    assert.equal(saved.status,200);assert.deepEqual(await saved.json(),{saved:true,score:14,secondary:0});
   });
 });
 test('score rules reject unfinished and impossible results',()=>{

@@ -22,8 +22,9 @@ export default {
       }
       const game = gameId(body.game);
       if (body.action === 'start') {
-        const { data, error } = await db.rpc('start_game_run', { p_user: userId, p_game: game });
+        const { data, error } = await db.rpc('start_game_run', { p_user: userId, p_game: game }).single<{id:string;expires_at:string}>();
         if (error) throw new HttpError(error.message.includes('RATE_LIMIT') ? 429 : 503, error.message.includes('RATE_LIMIT') ? 'Bitte kurz warten, bevor du eine neue Runde startest.' : 'Wertung konnte nicht gestartet werden.');
+        if (!data || typeof data.id !== 'string') throw new HttpError(503, 'Die Wertung hat keine gültige Lauf-ID erhalten. Bitte erneut versuchen.');
         return json({ runId: data.id, expiresAt: data.expires_at });
       }
       if (body.action !== 'finish' || typeof body.runId !== 'string' || !/^[0-9a-f-]{36}$/i.test(body.runId)) throw new HttpError(400, 'Ungültiger Spielabschluss.');
@@ -31,7 +32,7 @@ export default {
       if (run.error) throw new HttpError(503, 'Lauf konnte nicht geprüft werden.');
       if (!run.data || run.data.game !== game) throw new HttpError(404, 'Spielrunde nicht gefunden.');
       const result = scoreResult(game, body.result);
-      const { data, error } = await db.rpc('finish_game_run', { p_user: userId, p_run: body.runId, p_score: result.score, p_secondary: result.secondary, p_details: result.details });
+      const { data, error } = await db.rpc('finish_game_run', { p_user: userId, p_run: body.runId, p_score: result.score, p_secondary: result.secondary, p_details: result.details }).single<{score:number;secondary_score:number}>();
       if (error) {
         if (/RUN_EXPIRED|RUN_TOO_SHORT/.test(error.message)) throw new HttpError(409, 'Diese Runde ist abgebrochen, abgelaufen oder zu kurz. Starte eine neue Wertung.');
         throw new HttpError(503, 'Ergebnis konnte nicht gespeichert werden. Erneut versuchen.');

@@ -73,13 +73,18 @@ Zugang und ist daher keine Lösung für gesperrte Einzelkonten.
 
 - **Pong:** Am PC „Gewertete Partie“ starten. Eine Partie bis fünf Punkte;
   Siege stehen vor Niederlagen, danach zählt die Punktedifferenz.
-- **Tic-Tac-Toe:** „10-Partien-Wertung“ an der Küchentafel. Mensch/Küche beginnen
+- **Tic-Tac-Toe:** Beim Betreten der Küchentafel beginnt automatisch eine
+  10-Partien-Wertung. Mensch/Küche beginnen
   abwechselnd. Sieg 3, Remis 1, Niederlage 0 Punkte. Die nächste Partie ist erst
   nach Ende der vorigen verfügbar.
-- **Boxen:** Am Boxsack `B` oder den Touch-Button für 60 Sekunden Wertung nutzen.
+- **Boxen:** Der erste Treffer startet automatisch eine 60-Sekunden-Wertung.
+  Alternativ `B` oder den Wertungsbutton nutzen.
   Längste wechselnde Serie zählt zuerst, Trefferzahl danach. Pause/Verlassen der
   Runde bricht die Wertung ab.
-- Highscores im Menü: Top 20 plus eigener bester Lauf. Gleiche Ergebnisse teilen
+- Highscores mit `H` oder dem direkten Highscore-Button öffnen. Die Rangliste
+  pausiert das Spiel und den Box-Timer, ohne die laufende Wertung abzubrechen.
+  „Weiter spielen“ setzt die Partie fort; bei gesperrter Mausfreigabe erneut klicken.
+  Top 20 plus eigener bester Lauf. Gleiche Ergebnisse teilen
   denselben Rang. Anzeigenamen lassen sich im Menü ändern; E-Mail bleibt privat.
 - Netzwerkfehler beim Abschluss: „Erneut speichern“ übermittelt denselben Lauf.
   Ein Primärschlüssel und eine Transaktion verhindern doppelte Einträge. Nicht

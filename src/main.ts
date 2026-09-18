@@ -34,6 +34,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <canvas id="game" aria-label="Begehbares 3D-Modell der KrausMansion"></canvas>
   <header class="brand"><span class="brand-mark">K.</span><div>KRAUSMANSION<span>Bewegung ausprobieren.</span></div></header>
   <div class="location"><span id="floor-name">Hausmodell</span><strong id="room-name">Wird geladen …</strong></div>
+  <button type="button" id="quick-scores" hidden>H · Highscores</button>
   <div id="crosshair" aria-hidden="true"></div>
   <aside id="boxing-hud" class="boxing-hud" hidden aria-label="Boxtraining">
     <p class="boxing-kicker">ENTDECKT / 01 · BOXTRAINING</p>
@@ -124,7 +125,21 @@ let previousHeight:number = 1.8;
 const boxingHud=$('boxing-hud');
 const gameAudio=new GameAudio();
 const scores=new Scoreboard();
-scores.onShow=()=>{if(playing)pause();};
+let scoreMenuWasOpen=false;
+scores.onShow=()=>{
+  scoreMenuWasOpen=menu.open;if(menu.open)menu.close();
+  keys.clear();touch.reset();touch.setEnabled(false);player?.stop();accumulator=0;
+  for(const code of ['KeyW','KeyS','ArrowUp','ArrowDown'])house?.pong?.key(code,false);
+  gameAudio.setPlaying(false);
+  if(document.pointerLockElement===canvas)document.exitPointerLock();
+};
+scores.onClose=async()=>{
+  if(playing&&!touchMode&&!activeActivity()){
+    try{await canvas.requestPointerLock();}catch{return false;}
+  }
+  if(scoreMenuWasOpen&&!menu.open)menu.showModal();
+  lastTime=0;accumulator=0;gameAudio.setPlaying(playing);updateInputUI();return true;
+};
 const touch=new TouchControls($('touch-controls'),(dx,dy)=>{
   if(!playing||!touchMode||activeActivity())return;
   const scale=3/Math.max(320,innerHeight)*touchSensitivity;
@@ -201,6 +216,7 @@ async function checkAuthentication(): Promise<boolean> {
   if(!authenticated) {if(authGate.hidden)showAuthGate();return false;}
   $('account-menu').hidden=account.mode==='local';
   $('show-scores').hidden=account.mode!=='supabase';
+  $('quick-scores').hidden=account.mode!=='supabase';
   $('player-name-label').hidden=$('player-name').hidden=$('save-player').hidden=account.mode!=='supabase';
   $<HTMLInputElement>('player-name').value=account.displayName;
   return true;
@@ -379,16 +395,16 @@ document.addEventListener('pointerlockchange',()=>{
   if(document.pointerLockElement===canvas) {
     if(mouseStartPending&&ready&&!touchMode&&!document.hidden)beginPlay();
     else if(!playing||touchMode)document.exitPointerLock();
-  } else if(playing&&!touchMode&&!activeActivity()) pause();
+  } else if(playing&&!touchMode&&!activeActivity()&&!scores.isOpen) pause();
 });
 document.addEventListener('pointerlockerror',()=>{mouseStartPending=false;status.textContent='Maussteuerung wurde vom Browser abgelehnt. Klicke erneut auf Spielen oder wähle „Touch / Joystick“.';});
 document.addEventListener('mousemove',event=>{
-  if(!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas)return;
+  if(scores.isOpen||!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas)return;
   yaw -= event.movementX*.002*sensitivity;
   pitch = THREE.MathUtils.clamp(pitch-event.movementY*.002*sensitivity,-Math.PI/2+.025,Math.PI/2-.025);
 });
 document.addEventListener('mousedown',event=>{
-  if(!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
+  if(scores.isOpen||!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
   event.preventDefault();
   if(event.button===0&&house.pong?.available){house.pong.enter();return;}
   gameAudio.unlock();
@@ -396,6 +412,10 @@ document.addEventListener('mousedown',event=>{
 });
 canvas.addEventListener('contextmenu',event=>{if(playing)event.preventDefault();});
 document.addEventListener('keydown',event=>{
+  if(scores.isOpen)return;
+  if(ready&&account.mode==='supabase'&&event.code==='KeyH'&&!event.repeat&&!(event.target instanceof HTMLInputElement)&&!(event.target instanceof HTMLTextAreaElement)){
+    event.preventDefault();scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':!boxingHud.hidden?'boxing':undefined);return;
+  }
   if(playing&&house?.pong?.key(event.code,true)){event.preventDefault();return;}
   if(activeActivity()){if(event.code==='Escape'){event.preventDefault();activeActivity()?.leave();}return;}
   if(playing&&event.code==='Escape'){event.preventDefault();pause();return;}
@@ -407,7 +427,7 @@ document.addEventListener('keyup',event=>{
   keys.delete(event.code);
   if(playing && controlledKeys.has(event.code))event.preventDefault();
 });
-function releaseInput() {keys.clear();touch.reset();mouseStartPending=false;gameAudio.setPlaying(false);if(playing)pause();else if(document.pointerLockElement===canvas)document.exitPointerLock();}
+function releaseInput() {keys.clear();touch.reset();mouseStartPending=false;gameAudio.setPlaying(false);if(scores.isOpen)return;if(playing)pause();else if(document.pointerLockElement===canvas)document.exitPointerLock();}
 window.addEventListener('blur',releaseInput);
 document.addEventListener('visibilitychange',()=>{if(document.hidden)releaseInput();lastTime=0;accumulator=0;});
 document.querySelectorAll<HTMLButtonElement>('[data-floor]').forEach(button=>button.addEventListener('click',()=>{if(ready)setFloor(button.dataset.floor as FloorId);}));
@@ -445,7 +465,7 @@ window.addEventListener('resize',()=>{
 function animate(time:number) {
   frameId=requestAnimationFrame(animate);
   const dt = lastTime ? Math.min((time-lastTime)/1000,.1) : 0;lastTime=time;
-  if(document.hidden)return;
+  if(document.hidden||scores.isOpen)return;
   scores.tick(playing);
   if(playing&&activeActivity()){
     activeActivity()!.update(camera,dt);renderer.render(house.scene,camera);return;
@@ -560,6 +580,7 @@ $('auth-recover').addEventListener('click',async()=>{
 });
 $('sign-out').addEventListener('click',()=>{releaseInput();void account.signOut();});
 $('show-scores').addEventListener('click',()=>scores.show());
+$('quick-scores').addEventListener('click',()=>scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':!boxingHud.hidden?'boxing':undefined));
 $('save-player').addEventListener('click',async()=>{
   try {
     const response=await account.request('/api/highscores',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayName:$<HTMLInputElement>('player-name').value})});

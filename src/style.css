@@ -109,3 +109,5 @@ body.pong-playing .map,body.pong-playing .play-help,body.pong-playing .movement,
 @media(max-height:500px){.score-notice{top:72px;font-size:11px;padding:6px 9px}.pong-actions button,.chalk-actions button{font-size:12px;padding:6px 10px}}
 
 .auth-gate{z-index:60}
+#quick-scores{position:fixed;right:24px;top:108px;z-index:42;min-height:44px;padding:9px 14px;border:1px solid #d4fa7260;border-radius:6px;background:#142521ed;color:#e0edcf;cursor:pointer;font:inherit;font-size:13px}
+.touch-mode #quick-scores{top:calc(12px + env(safe-area-inset-top));right:calc(12px + env(safe-area-inset-right));font-size:12px}

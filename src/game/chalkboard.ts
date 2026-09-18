@@ -41,14 +41,18 @@ export class Chalkboard {
   private ray=new THREE.Raycaster();
   onChallengeResult=(_result:{wins:number;draws:number;losses:number})=>{};
   onCancel=()=>{};
+  onNewChallenge?:()=>void;
+  private preparing=false;
+  setPreparing(value:boolean){this.preparing=value;this.draw();}
   private challenge:{round:number;wins:number;draws:number;losses:number;counted:boolean}|null=null;
   startChallenge(){this.challenge={round:1,wins:0,draws:0,losses:0,counted:false};this.game.reset();this.draw();}
   private nextRound(){
+    if(this.preparing)return;
     if(this.challenge){
       if(!outcome(this.game.board))return;
       this.challenge.round++;this.challenge.counted=false;
       this.game.reset();this.game.thinking=this.challenge.round%2===0;
-    }else this.game.reset();
+    }else if(this.onNewChallenge){this.onNewChallenge();return;}else this.game.reset();
     this.thinkingTime=.45;this.draw();
   }
   onEnter=()=>{};
@@ -116,9 +120,9 @@ export class Chalkboard {
     text('Wer verliert, spült! :)',85,1994,36,'#c5d8ad');
     const result=outcome(this.game.board);
     this.status.textContent=result==='X'?'Gewonnen! Die Küche übernimmt den Abwasch.':result==='O'?'Die Küche gewinnt. Du bist zum Spülen eingeteilt!':result==='draw'?'Unentschieden. Die Spülmaschine rettet euch.':this.game.thinking?'Die Küche grübelt …':'Dein Zug · ein freies Feld anklicken oder antippen';
-    this.cells.forEach((cell,i)=>{cell.disabled=Boolean(this.game.board[i]||result||this.game.thinking||this.phase!=='game');cell.setAttribute('aria-label',`Zeile ${Math.floor(i/3)+1}, Spalte ${i%3+1}: ${this.game.board[i]||'frei'}`);});
+    this.cells.forEach((cell,i)=>{cell.disabled=Boolean(this.preparing||this.game.board[i]||result||this.game.thinking||this.phase!=='game');cell.setAttribute('aria-label',`Zeile ${Math.floor(i/3)+1}, Spalte ${i%3+1}: ${this.game.board[i]||'frei'}`);});
     const next=this.ui.querySelector<HTMLButtonElement>('[data-new]')!;
-    next.disabled=Boolean(this.challenge&&!result);
+    next.disabled=this.preparing||Boolean(this.challenge&&!result);
     next.textContent=this.challenge?'Nächste Partie':'Neue Runde';
     if(this.challenge){
       const c=this.challenge;
@@ -126,6 +130,8 @@ export class Chalkboard {
       this.status.textContent=`Wertung · Partie ${c.round}/10 · ${c.wins*3+c.draws} Punkte · ${this.status.textContent}`;
       if(c.round===10&&c.counted){this.challenge=null;next.disabled=false;next.textContent='Neue Runde';this.onChallengeResult({wins:c.wins,draws:c.draws,losses:c.losses});}
     }
+    if(this.preparing)this.status.textContent='Highscore-Serie wird vorbereitet …';
+    else if(this.onNewChallenge&&!this.challenge){next.textContent='Neue 10-Partien-Serie';}
     this.texture.needsUpdate=true;
   }
   /** Surface distance plus direct sight: no activation through a wall or from behind. */
