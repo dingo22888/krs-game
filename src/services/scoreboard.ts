@@ -134,7 +134,7 @@ export class Scoreboard {
       const response=await account.request('/api/highscores',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'finish',game:pending.run.game,runId:pending.run.id,result:pending.result})});
       const data=await response.json();if(!response.ok){if(response.status===409||response.status===404||response.status===400)this.pending=undefined;throw new Error(data.error);}
       this.pending=undefined;this.retry.hidden=true;
-      this.message(`${labels[pending.run.game]} · Ergebnis gespeichert. Dein Rekord steht unter Highscores im Menü.`);
+      this.message(`${labels[pending.run.game]} · Ergebnis gespeichert. Dein Rekord steht unter H · Highscores.`);
     }catch(error){this.retry.hidden=!this.pending;this.message(error instanceof Error?error.message:'Speichern fehlgeschlagen. Du kannst es erneut versuchen.');}
     finally{this.busy=false;this.retry.disabled=false;}
   }
@@ -142,7 +142,8 @@ export class Scoreboard {
   cancelBoxing(){if(this.run?.game==='boxing')this.cancel();}
   cancel(){
     ++this.generation;
-    if(this.run)this.message('Wertung abgebrochen. Freies Spielen bleibt möglich.');
+    // Leaving an activity clears its HUD; retain only unsaved-result feedback.
+    if(!this.pending)this.notice.hidden=true;
     this.run=undefined;if(!this.pending)this.busy=false;
     this.buttons.forEach(b=>b.disabled=false);
   }

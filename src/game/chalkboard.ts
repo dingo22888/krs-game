@@ -75,7 +75,7 @@ export class Chalkboard {
     this.target.copy(this.at(grid.x+grid.size/2,grid.y+grid.size/2));
     this.ui.className='chalk-game';this.ui.hidden=true;
     this.ui.setAttribute('role','dialog');this.ui.setAttribute('aria-modal','true');this.ui.setAttribute('aria-label','Tic-Tac-Toe an der Küchentafel');
-    this.ui.innerHTML='<div class="chalk-caption"><span>KÜCHENDUELL · DU BIST X</span><p role="status" aria-live="polite"></p></div><div class="chalk-actions"><button type="button" data-new>Neue Runde</button><button type="button" data-close>Zurück ins Haus · Esc</button></div>';
+    this.ui.innerHTML='<div class="chalk-caption"><span>KÜCHENDUELL · DU BIST X</span><p role="status" aria-live="polite"></p></div><div class="chalk-actions"><button type="button" data-new>Neue Runde</button><button type="button" data-close>Zurück ins Haus</button></div>';
     this.status=this.ui.querySelector('p')!;
     for(let i=0;i<9;i++){
       const cell=document.createElement('button');cell.type='button';cell.className='chalk-cell';
@@ -85,7 +85,6 @@ export class Chalkboard {
     this.ui.querySelector('[data-new]')!.addEventListener('click',()=>this.nextRound());
     this.ui.querySelector('[data-close]')!.addEventListener('click',()=>this.leave());
     this.ui.addEventListener('keydown',e=>{
-      if(e.key==='Escape'){e.preventDefault();e.stopPropagation();this.leave();}
       if(e.key==='Tab'){
         const buttons=[...this.ui.querySelectorAll<HTMLButtonElement>('button:not(:disabled)')];
         const index=buttons.indexOf(document.activeElement as HTMLButtonElement);

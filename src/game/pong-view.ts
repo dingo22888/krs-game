@@ -27,7 +27,7 @@ export class PongView {
   this.target.copy(this.mesh.position);this.normal.set(0,0,1).applyQuaternion(this.mesh.quaternion);
   this.prompt.type='button';this.prompt.className='pong-prompt';this.prompt.textContent='E / Klick · Hinsetzen & Pong spielen';this.prompt.hidden=true;document.body.append(this.prompt);
   this.ui.className='pong-ui';this.ui.hidden=true;this.ui.setAttribute('role','dialog');this.ui.setAttribute('aria-label','Pong am Schreibtisch');this.ui.setAttribute('aria-modal','true');
-  this.ui.innerHTML='<div class="pong-instructions">BÜROPAUSE · PONG<span>Maus bewegen, W/S oder ↑/↓ · Mobil: nach oben/unten ziehen</span><p role="status" aria-live="polite"></p></div><div class="pong-actions"><button type="button" data-play>Spiel starten</button><button type="button" data-exit>Aufstehen · Esc</button></div>';
+  this.ui.innerHTML='<div class="pong-instructions">BÜROPAUSE · PONG<span>Maus bewegen, W/S oder ↑/↓ · Mobil: nach oben/unten ziehen</span><p role="status" aria-live="polite"></p></div><div class="pong-actions"><button type="button" data-play>Spiel starten</button><button type="button" data-exit>Aufstehen</button></div>';
   this.status=this.ui.querySelector('p')!;this.playButton=this.ui.querySelector('[data-play]')!;
   this.ui.querySelector('[data-exit]')!.addEventListener('click',()=>this.leave());
   this.playButton.addEventListener('click',()=>{if(this.game.winner){this.game.reset();this.paddle=.5;}this.running=!this.running;this.updateStatus();});
@@ -39,7 +39,7 @@ export class PongView {
  get active(){return this.phase!=='idle';}
  private screenPoint(x:number,y:number){const s=this.mesh.geometry.parameters;const p=this.mesh.localToWorld(new THREE.Vector3(x*s.width,y*s.height,0)).project(this.lastCamera!);return {x:(p.x+1)*innerWidth/2,y:(1-p.y)*innerHeight/2};}
  key(code:string,down:boolean){
-  if(this.active){if(['KeyW','KeyS','ArrowUp','ArrowDown'].includes(code)){if(down)this.keys.add(code);else this.keys.delete(code);return true;}if(down&&code==='Escape'){this.leave();return true;}}
+  if(this.active){if(['KeyW','KeyS','ArrowUp','ArrowDown'].includes(code)){if(down)this.keys.add(code);else this.keys.delete(code);return true;}}
   else if(this.available&&down&&code==='KeyE'){this.enter();return true;}return false;
  }
  hidePrompt(){this.available=false;this.prompt.hidden=true;}

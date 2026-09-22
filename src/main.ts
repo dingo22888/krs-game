@@ -321,7 +321,9 @@ function updateFloorLabel(id:FloorId) {
 
 function pause() {
   scores.cancelBoxing();
-  house?.chalkboard?.cancel(camera);house?.pong?.cancel(camera);house?.pong?.hidePrompt();
+  // Keep seated games and their ranked run intact while the menu is open.
+  house?.pong?.hidePrompt();
+  for(const code of ['KeyW','KeyS','ArrowUp','ArrowDown'])house?.pong?.key(code,false);
   gameAudio.setPlaying(false);
   playing=false;mouseStartPending=false;keys.clear();touch.setEnabled(false);accumulator=0;player?.stop();
   if(document.pointerLockElement===canvas)document.exitPointerLock();
@@ -331,8 +333,8 @@ function pause() {
   if(!menu.open)menu.showModal();
   $('menu-title').innerHTML = hasPlayed ? 'Kurze<span>Pause.</span>' : 'Kraus<span>Mansion.</span>';
   $('intro').textContent = customModel ? 'Dein Hausmodell ist geladen. Wähle eine Etage und erkunde das Haus.' : 'Lade dein Hausmodell oder probiere die Bewegung im Testraum aus.';
-  $('start-label').textContent = hasPlayed ? 'Weiter erkunden' : customModel ? 'Haus betreten' : 'Testraum betreten';
-  status.textContent = controlHint();
+  $('start-label').textContent = activeActivity() ? 'Minispiel fortsetzen' : hasPlayed ? 'Weiter erkunden' : customModel ? 'Haus betreten' : 'Testraum betreten';
+  status.textContent = activeActivity() ? 'Die Partie ist pausiert. Beim Fortsetzen bleibt der Cursor frei.' : controlHint();
   updateInputUI();
 }
 
@@ -377,7 +379,7 @@ start.addEventListener('click',async()=>{
   if (!ready||portrait()) return;
   gameAudio.unlock();
   status.textContent = '';
-  if(touchMode){beginPlay();return;}
+  if(touchMode||activeActivity()){beginPlay();return;}
   if(!canvas.requestPointerLock){status.textContent='Maussteuerung ist hier nicht verfügbar. Wähle unten „Touch / Joystick“.';return;}
   mouseStartPending=true;
   try { await canvas.requestPointerLock(); }
@@ -416,9 +418,9 @@ document.addEventListener('keydown',event=>{
   if(ready&&account.mode==='supabase'&&event.code==='KeyH'&&!event.repeat&&!(event.target instanceof HTMLInputElement)&&!(event.target instanceof HTMLTextAreaElement)){
     event.preventDefault();scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':!boxingHud.hidden?'boxing':undefined);return;
   }
+  if(playing&&event.code==='Escape'){event.preventDefault();if(!event.repeat)pause();return;}
   if(playing&&house?.pong?.key(event.code,true)){event.preventDefault();return;}
-  if(activeActivity()){if(event.code==='Escape'){event.preventDefault();activeActivity()?.leave();}return;}
-  if(playing&&event.code==='Escape'){event.preventDefault();pause();return;}
+  if(activeActivity())return;
   if(!playing||touchMode || !controlledKeys.has(event.code))return;
   event.preventDefault();keys.add(event.code);
 });

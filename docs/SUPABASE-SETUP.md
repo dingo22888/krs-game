@@ -109,3 +109,7 @@ Verifiziert: API-Tests mit echten SDK-Aufrufen gegen simulierte HTTP-Antworten,
 Datenbank-Transaktion mit temporären Testbenutzern und anschließendem Rollback,
 Browser-Abläufe mit lokaler API-Simulation. Ein echter Konto-/Mailversandtest ist
 erst nach Einrichtung des ersten Kontos und SMTP möglich.
+
+### Pause und Rückkehr
+
+Esc pausiert Tic-Tac-Toe und Pong samt Spielstand. „Minispiel fortsetzen“ setzt die Partie mit freiem Cursor fort. „Zurück ins Haus“ bzw. „Aufstehen“ verlässt das Minispiel und bricht eine unfertige Wertung ab. Boxtraining wird beim Öffnen des Esc-Menüs weiterhin abgebrochen.
