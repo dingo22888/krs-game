@@ -1,3 +1,4 @@
+import { prepareBrewCellar } from './brew-cellar.ts';
 import type { FloorId, FloorPlan, Room } from '../data/house.ts';
 import { inPolygon, rectanglePoints, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
@@ -15,7 +16,7 @@ const inside=(r:Rect,room:Room)=>inPolygon((r[0]+r[2])/2,(r[1]+r[3])/2,room.poly
  * or floor outlines belong in the public bundle. Safe to run again on a saved
  * model: replace the room's generated furniture rather than duplicating it. */
 export function prepareInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
-  return prepareStudio(prepareUpperInteriors(prepareDormers(prepareBaseInteriors(input))));
+  return prepareBrewCellar(prepareStudio(prepareUpperInteriors(prepareDormers(prepareBaseInteriors(input)))));
 }
 function prepareBaseInteriors(input:Record<FloorId,FloorPlan>):Record<FloorId,FloorPlan> {
   input=prepareLivingRoom(input);

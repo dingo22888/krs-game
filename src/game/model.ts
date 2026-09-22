@@ -1,3 +1,4 @@
+import { brewDetails } from './brew-cellar.ts';
 import type { FloorPlan } from '../data/house.ts';
 import { decomposePolygon, subtractRects } from './geometry.ts';
 import type { Rect } from './geometry.ts';
@@ -7,7 +8,7 @@ import { diningDetails } from './dining.ts';
 import { studioDetails } from './studio.ts';
 import { kitchenDetails } from './kitchen-details.ts';
 
-export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen'|'ceramic'|'bathTile'|'bedding'|'linen'|'mirror'|'kitchenFront'|'kitchenOak'|'steel'|'lampGlow'|'wicker'|'diningWood'|'diningPattern'|'diningShade'|'copper'|'leaf';
+export type MaterialKind = 'wall'|'floor'|'ceiling'|'wood'|'fabric'|'metal'|'glass'|'cabinet'|'door'|'interiorDoor'|'windowFrame'|'hardware'|'upholstery'|'rug'|'screen'|'ceramic'|'bathTile'|'bedding'|'linen'|'mirror'|'kitchenFront'|'kitchenOak'|'steel'|'lampGlow'|'wicker'|'diningWood'|'diningPattern'|'diningShade'|'copper'|'leaf'|'brewWood'|'brewFabric'|'brewAlbum';
 export interface BoxSpec {
   position:[number,number,number];
   size:[number,number,number];
@@ -114,7 +115,7 @@ export function buildModel(plan:FloorPlan,slabThickness=.18):BoxSpec[] {
   }
   for(const support of plan.supports??[])add(support.rect,support.bottom,support.top,'metal');
   for (const f of plan.furniture) {
-    const detailed=studioDetails(f)??diningDetails(f)??kitchenDetails(f)??furnitureDetails(f);
+    const detailed=brewDetails(f)??studioDetails(f)??diningDetails(f)??kitchenDetails(f)??furnitureDetails(f);
     if(detailed){boxes.push(...detailed);continue;}
     const [x0,z0,x1,z1] = f.rect;
     if(f.kind==='rug') {

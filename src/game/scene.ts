@@ -1,3 +1,4 @@
+import { brewTexture, addBrewDecor } from './brew-textures.ts';
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
 import type { FloorPlan, Surface } from '../data/house.ts';
@@ -110,6 +111,9 @@ export function createHouseScene(plans:FloorPlan[]) {
     diningShade:new THREE.MeshStandardMaterial({map:diningTexture('shade'),side:THREE.DoubleSide,roughness:.82}),
     copper:new THREE.MeshStandardMaterial({color:'#b96c32',side:THREE.DoubleSide,metalness:.6,roughness:.35}),
     leaf:new THREE.MeshStandardMaterial({color:'#305a36',roughness:.82}),
+    brewWood:new THREE.MeshStandardMaterial({map:brewTexture('wood'),roughness:.7}),
+    brewFabric:new THREE.MeshStandardMaterial({map:brewTexture('fabric'),roughness:1}),
+    brewAlbum:new THREE.MeshStandardMaterial({map:brewTexture('album'),roughness:.7}),
     lampGlow:new THREE.MeshStandardMaterial({color:'#fff0ce',emissive:'#ffd698',emissiveIntensity:1.2,roughness:.6}),
   };
   const model = buildBuilding(plans);
@@ -119,7 +123,7 @@ export function createHouseScene(plans:FloorPlan[]) {
     if (!specs.length) continue;
     // Transparent panes stay separate for sorting; opaque objects share only
     // their exposed surfaces, including adjoining sofa and cabinet pieces.
-    const groups = kind === 'glass' ? specs.map(b => [b]) : [specs];
+    const groups = kind === 'glass' || kind === 'brewAlbum' ? specs.map(b => [b]) : [specs];
     for (const group of groups) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(boxSurfacePositions(group), 3));
@@ -128,7 +132,10 @@ export function createHouseScene(plans:FloorPlan[]) {
         const pos=geometry.getAttribute('position'),normal=geometry.getAttribute('normal'),uv=[];
         for(let i=0;i<pos.count;i++) {
           const y=Math.abs(normal.getY(i))>.5;
-          uv.push(Math.abs(normal.getX(i))>.5?pos.getZ(i):pos.getX(i),y?pos.getZ(i):pos.getY(i));
+          if(kind==='brewAlbum'){
+            const b=group[0],side=Math.abs(normal.getX(i))>.5,axis=side?2:0;
+            uv.push(((side?pos.getZ(i):pos.getX(i))-b.position[axis])/b.size[axis]+.5,(pos.getY(i)-b.position[1])/b.size[1]+.5);
+          }else uv.push(Math.abs(normal.getX(i))>.5?pos.getZ(i):pos.getX(i),y?pos.getZ(i):pos.getY(i));
         }
         geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
       }
@@ -154,6 +161,7 @@ export function createHouseScene(plans:FloorPlan[]) {
     mesh.castShadow=true;mesh.receiveShadow=true;scene.add(mesh);
   }
   for(const plan of plans) {
+    addBrewDecor(scene,plan);
     const [ox,oy,oz]=origin(plan);
     for(const room of plan.rooms)for(const rect of subtractRects(decomposePolygon(room.polygon),plan.floorHoles??[])) {
       const mesh=horizontalPolygon(rectanglePoints(rect),floorMaterials[room.surface],oy+.002);
