@@ -16,7 +16,7 @@ test('brew recipe replaces placeholders once, leaves other rooms/structure uncha
  assert.deepEqual(out.eg,source.eg);assert.deepEqual(out.kg.walls,source.kg.walls);assert.deepEqual(out.kg.openings,source.kg.openings);
  assert.ok(out.kg.furniture.some(f=>f.kind==='shelf'&&f.rect[0]===6));
  assert.equal(out.kg.furniture.filter(f=>f.kind==='barstool').length,2);
- assert.equal(out.kg.furniture.filter(f=>f.kind==='brewChair').length,2);
+ assert.equal(out.kg.furniture.filter(f=>f.kind==='brewChair').length,1);
  assert.equal(out.kg.furniture.filter(f=>f.kind==='brewBench').length,2);
  assert.equal(parseHouseModel(JSON.stringify({format:'krs-house',version:1,floors:out})).kg.furniture.length,out.kg.furniture.length);
 });

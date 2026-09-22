@@ -23,12 +23,11 @@ export function prepareBrewCellar(input:Record<FloorId,FloorPlan>){
  const bx=west+1.55,bz=north+.10,length=Math.min(1.72,depth-2.05);
  add('brewBar',[bx,bz,bx+.83,bz+length],1.10,'east');
  for(const z of [bz+.42,bz+length-.36])add('barstool',[bx+1.0,z-.23,bx+1.46,z+.23],1.02,'west');
- // An L-shaped upholstered bench at the south/east corner; two loose chairs.
+ // An L-shaped upholstered bench at the south/east corner; one loose chair; keep the bar-side aisle open.
  add('brewBench',[east-1.95,south-.49,east-.04,south-.025],1.04,'north');
  add('brewBench',[east-.49,south-1.47,east-.025,south-.50],1.04,'west');
  add('brewTable',[east-1.83,south-1.30,east-.61,south-.62],.74);
  add('brewChair',[east-2.34,south-1.25,east-1.92,south-.81],.99,'east');
- add('brewChair',[east-1.47,south-1.80,east-1.05,south-1.36],.99,'south');
  add('brewPanel',[west+.02,south-.02,east-.02,south-.004],Math.min(2.22,plan.height-.08),'north');
  add('brewShelves',[west+.88,north+.025,west+2.30,north+.26],.74,'south',1.28);
  add('tv',[east-1.17,north+.012,east-.27,north+.065],.51,'south',1.57);
