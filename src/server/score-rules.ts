@@ -1,5 +1,6 @@
+import {dartScore} from '../game/darts.ts';
 import { HttpError } from './supabase.ts';
-export const games = ['pong', 'boxing', 'tic-tac-toe'] as const;
+export const games = ['pong', 'boxing', 'tic-tac-toe', 'darts'] as const;
 export type GameId = typeof games[number];
 export function gameId(value: unknown): GameId {
   if (!games.includes(value as GameId)) throw new HttpError(400, 'Unbekanntes Minispiel.');
@@ -13,6 +14,16 @@ export function scoreResult(game: GameId, value: unknown) {
     if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > max) throw new HttpError(400, 'Ungültiges Spielergebnis.');
     return n;
   };
+  if (game === 'darts') {
+    if (!Array.isArray(data.throws) || data.throws.length !== 9) throw new HttpError(400, 'Es müssen neun Pfeile geworfen sein.');
+    const throws = data.throws.map((hit:unknown)=>{
+      if(!hit||typeof hit!=='object')throw new HttpError(400,'Ungültiger Wurf.');
+      const {x,y}=hit as {x:unknown;y:unknown};
+      if(typeof x!=='number'||typeof y!=='number'||!Number.isFinite(x)||!Number.isFinite(y)||Math.abs(x)>.3||Math.abs(y)>.3)throw new HttpError(400,'Ungültiger Wurf.');
+      return {x,y,points:dartScore(x,y).points};
+    });
+    return {score:throws.reduce((n,h)=>n+h.points,0),secondary:0,details:{throws}};
+  }
   if (game === 'pong') {
     const player = number('player', 5), opponent = number('opponent', 5);
     if ((player === 5) === (opponent === 5)) throw new HttpError(400, 'Die Partie ist nicht abgeschlossen.');

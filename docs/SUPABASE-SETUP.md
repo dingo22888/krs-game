@@ -113,3 +113,12 @@ erst nach Einrichtung des ersten Kontos und SMTP möglich.
 ### Pause und Rückkehr
 
 Esc pausiert Tic-Tac-Toe und Pong samt Spielstand. „Minispiel fortsetzen“ setzt die Partie mit freiem Cursor fort. „Zurück ins Haus“ bzw. „Aufstehen“ verlässt das Minispiel und bricht eine unfertige Wertung ab. Boxtraining wird beim Öffnen des Esc-Menüs weiterhin abgebrochen.
+
+## Darts im Braukeller
+
+Migration `20260922142643_darts_highscores.sql` ergänzt das Spiel `darts`.
+Eine Wertung umfasst neun Pfeile, maximal 540 Punkte. Die API berechnet
+die Punkte aus den neun Treffkoordinaten; das Ergebnis bleibt wie bei den
+anderen Minispielen clientbasiert (keine manipulationssichere Turnierwertung).
+Die Datenbank prüft Wertebereich, Mitgliedschaft, Laufdauer und einmaligen Abschluss.
+Escape und Highscores pausieren die Partie; „Zurück ins Haus“ bricht sie ab.

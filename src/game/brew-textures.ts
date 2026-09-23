@@ -46,6 +46,10 @@ export function addBrewDecor(scene:THREE.Scene,plan:FloorPlan){
   const sign=new THREE.Mesh(new THREE.PlaneGeometry(w,f.height),new THREE.MeshBasicMaterial({map:texture,toneMapped:false}));
   sign.position.set(ox+p[0],oy+(f.bottom??0)+f.height/2,oz+p[1]);sign.rotation.y=angle;scene.add(sign);
  }
- const bar=plan.furniture.find(f=>f.kind==='brewBar');if(!bar)return;
- const light=new THREE.PointLight('#ffd6a0',5,5,2);light.position.set(ox+(bar.rect[0]+bar.rect[2])/2,oy+1.67,oz+(bar.rect[1]+bar.rect[3])/2);scene.add(light);
+ for(const f of plan.furniture.filter(f=>f.kind==='brewPendant')){
+  const x=ox+(f.rect[0]+f.rect[2])/2,z=oz+(f.rect[1]+f.rect[3])/2;
+  const light=new THREE.SpotLight('#ffbd78',3.8,3.0,Math.PI*.38,.85,2);
+  light.position.set(x,oy+(f.bottom??1.69)-.015,z);
+  light.target.position.set(x,oy+.7,z);scene.add(light,light.target);
+ }
 }

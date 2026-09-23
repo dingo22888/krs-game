@@ -33,6 +33,7 @@ export function prepareBrewCellar(input:Record<FloorId,FloorPlan>){
  add('tv',[east-1.17,north+.012,east-.27,north+.065],.51,'south',1.57);
  add('brewSign',[west+.90,north+.04,west+1.57,north+.08],.30,'south',.83);
  for(const z of [bz+.40,bz+length-.32])add('brewPendant',[bx+.30,z-.15,bx+.60,z+.15],plan.height-1.69,'south',1.69);
+ add('brewPendant',[east-1.37,south-1.11,east-1.07,south-.81],plan.height-1.69,'south',1.69);
  return result;
 }
 

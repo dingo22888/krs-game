@@ -114,3 +114,14 @@ body.pong-playing .map,body.pong-playing .play-help,body.pong-playing .movement,
 
 /* Paused minigames keep their state, but expose only the pause dialog. */
 body:not(.playing) .chalk-game,body:not(.playing) .pong-ui,body:not(.playing) .score-notice{display:none}
+
+.darts-ui{position:fixed;inset:0;z-index:35;touch-action:none;cursor:crosshair;color:#f3dfbc}
+.darts-ui[hidden],.darts-reticle[hidden],body:not(.playing) .darts-ui,body:not(.playing) .darts-prompt{display:none}
+.darts-caption{position:absolute;top:max(70px,env(safe-area-inset-top));left:50%;transform:translateX(-50%);width:max-content;max-width:90vw;text-align:center;background:#211b16ed;padding:10px 18px;border-radius:8px;pointer-events:none}
+.darts-caption b{font:12px monospace;letter-spacing:.13em;color:#edc184}.darts-caption span{display:block;font-size:12px;margin-top:6px}.darts-caption p{font-size:13px;margin:6px 0 0}
+.darts-reticle{position:absolute;width:18px;height:18px;border:1px solid #ffffffbb;border-radius:50%;transform:translate(-50%,-50%);pointer-events:none;filter:drop-shadow(0 1px 2px #000)}
+.darts-reticle:before,.darts-reticle:after{content:'';position:absolute;background:#ffd796;left:8px;top:3px;width:1px;height:10px}.darts-reticle:after{transform:rotate(90deg)}
+body.darts-playing .map,body.darts-playing .play-help,body.darts-playing .movement,body.darts-playing #crosshair,body.darts-playing .location,body.darts-playing .brand{visibility:hidden}
+@media(max-height:500px){.darts-caption{top:42px;padding:5px 10px}.darts-caption span{font-size:10px}.darts-caption p{font-size:11px;margin:3px 0}.darts-ui .pong-actions{bottom:6px}}
+body.darts-playing .score-notice{top:auto;bottom:82px}
+@media(max-height:500px){body.darts-playing .score-notice{bottom:56px;max-width:94vw;padding:5px 9px}.darts-caption{top:8px}.darts-caption span{max-width:65vw}}

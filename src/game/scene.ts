@@ -1,3 +1,5 @@
+import {DartsView} from './darts-view.ts';
+import {configureBrewLighting} from './brew-lighting.ts';
 import { brewTexture, addBrewDecor } from './brew-textures.ts';
 import * as THREE from 'three';
 import RAPIER from '@dimforge/rapier3d-compat';
@@ -207,10 +209,13 @@ export function createHouseScene(plans:FloorPlan[]) {
   const pantryPlan=plans.find(p=>p.furniture.some(f=>f.kind==='pantryDoor'));
   const pantry=pantryPlan?.furniture.find(f=>f.kind==='pantryDoor');
   const chalkboard=pantryPlan&&pantry?new Chalkboard(pantryPlan,pantry,scene):undefined;
+  const brewPlan=plans.find(p=>p.rooms.some(r=>/^braukeller$/i.test(r.name)));
+  const darts=brewPlan?new DartsView(brewPlan,scene):undefined;
+  configureBrewLighting(scene,plans);
   return {
-    scene,world,boxing,boxingView,chalkboard,pong,
+    scene,world,boxing,boxingView,chalkboard,pong,darts,
     dispose() {
-      boxingView?.dispose();chalkboard?.dispose();pong?.dispose();
+      boxingView?.dispose();chalkboard?.dispose();pong?.dispose();darts?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse(object => {
