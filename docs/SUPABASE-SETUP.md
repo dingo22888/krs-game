@@ -133,7 +133,10 @@ since starting. Like the other browser games, this is a household leaderboard,
 not a cheat-proof competition: the server does not replay client driving input.
 
 Controls: approach and look at the living-room TV, then E/click or the touch
-prompt. A/D or arrow keys steer; touch-and-drag steers on mobile. Escape or Pause
+prompt. A/D or left/right arrows steer. Hold W/up to accelerate and S/down to brake;
+release to coast. Braking wins when both pedals are held. Speed ranges from
+0 to 144 km/h; the existing 2400 m limit still applies. Mobile supports
+simultaneous drag steering and holding the Gas/Bremse buttons. Escape or Pause
 suspends the race, H opens scores, and the explicit return button leaves the TV.
 The `racing_highscores` migration extends existing game constraints and RPCs
 without granting direct client access to score tables.

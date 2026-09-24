@@ -130,3 +130,7 @@ body:not(.playing) .racing-ui,body:not(.playing) .racing-prompt{display:none}
 body.racing-playing .map,body.racing-playing .play-help,body.racing-playing .movement,body.racing-playing #crosshair,body.racing-playing .location,body.racing-playing .brand{visibility:hidden}
 body.racing-playing .score-notice{top:auto;bottom:82px}
 @media(max-height:500px){body.racing-playing .score-notice{bottom:56px}.racing-ui .pong-instructions span{font-size:10px}}
+.racing-pedals{position:absolute;bottom:84px;right:max(16px,env(safe-area-inset-right));display:flex;gap:12px;touch-action:none}
+.racing-pedals button{width:92px;min-height:64px;border:1px solid #bbd7a5;border-radius:9px;background:#172826e8;color:#e4efde;font:inherit;touch-action:none;user-select:none;-webkit-user-select:none}
+.racing-pedals button.pressed{background:#d4fa72;color:#172826}
+@media(max-height:500px){.racing-pedals{bottom:65px;right:12px;flex-direction:column;gap:8px}.racing-pedals button{width:92px;min-height:54px;font-size:13px}}

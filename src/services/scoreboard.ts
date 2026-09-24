@@ -8,7 +8,7 @@ import type { Boxing, BoxingHit } from '../game/boxing.ts';
 type Game = 'pong' | 'boxing' | 'tic-tac-toe' | 'darts' | 'racing';
 const labels: Record<Game,string> = { racing:'KRS Turbo', darts:'Darts', pong:'Pong', boxing:'Boxtraining', 'tic-tac-toe':'Tic-Tac-Toe' };
 const rules: Record<Game,string> = {
-  racing:'60 Sekunden: weiteste Strecke. Rempler und Grünstreifen bremsen.',
+  racing:'60 Sekunden: weiteste Strecke. ↑/W Gas, ↓/S Bremse. Rempler und Grünstreifen bremsen.',
   darts:'9 Pfeile: Gesamtpunkte. Double zählt doppelt, Triple dreifach, Bull 25 und Bullseye 50.',
   pong:'Partie bis 5. Siege vor Niederlagen, danach Punktedifferenz.',
   boxing:'60 Sekunden: längste abwechselnde Serie, danach Trefferzahl. Pausieren bricht die Wertung ab.',

@@ -325,7 +325,7 @@ function updateFloorLabel(id:FloorId) {
 function pause() {
   scores.cancelBoxing();
   // Keep seated games and their ranked run intact while the menu is open.
-  house?.pong?.hidePrompt();house?.darts?.hidePrompt();house?.racing?.hidePrompt();house?.racing?.clearInput();
+  house?.pong?.hidePrompt();house?.darts?.hidePrompt();house?.racing?.hidePrompt();
   house?.racing?.clearInput();
   for(const code of ['KeyW','KeyS','ArrowUp','ArrowDown'])house?.pong?.key(code,false);
   gameAudio.setPlaying(false);
