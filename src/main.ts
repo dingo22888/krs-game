@@ -129,6 +129,7 @@ let scoreMenuWasOpen=false;
 scores.onShow=()=>{
   scoreMenuWasOpen=menu.open;if(menu.open)menu.close();
   keys.clear();touch.reset();touch.setEnabled(false);player?.stop();accumulator=0;
+  house?.racing?.clearInput();
   for(const code of ['KeyW','KeyS','ArrowUp','ArrowDown'])house?.pong?.key(code,false);
   gameAudio.setPlaying(false);
   if(document.pointerLockElement===canvas)document.exitPointerLock();
@@ -145,7 +146,7 @@ const touch=new TouchControls($('touch-controls'),(dx,dy)=>{
   const scale=3/Math.max(320,innerHeight)*touchSensitivity;
   yaw-=dx*scale;pitch=THREE.MathUtils.clamp(pitch-dy*scale,-Math.PI/2+.025,Math.PI/2-.025);
 },hand=>{if(playing&&touchMode){gameAudio.unlock();house.boxing?.punch(hand,boxingPose());}});
-const activeActivity=()=>house?.chalkboard?.active?house.chalkboard:house?.pong?.active?house.pong:house?.darts?.active?house.darts:undefined;
+const activeActivity=()=>house?.chalkboard?.active?house.chalkboard:house?.pong?.active?house.pong:house?.darts?.active?house.darts:house?.racing?.active?house.racing:undefined;
 const portrait=()=>touchMode&&innerHeight>innerWidth;
 function controlHint() {return touchMode?'Links bewegen · rechts wischen · Joystick außen: schnell gehen.':'Ein Klick aktiviert die Maussteuerung. Esc gibt die Maus frei.';}
 function updateInputUI() {
@@ -279,7 +280,7 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
   } catch(error) {nextHouse.dispose();throw error;}
   if (house) {player.dispose();house.dispose();}
   house=nextHouse;player=nextPlayer;activeFloor=id;
-  for(const activity of [house.chalkboard,house.pong,house.darts])if(activity){
+  for(const activity of [house.chalkboard,house.pong,house.darts,house.racing])if(activity){
     activity.onEnter=()=>{
       keys.clear();touch.setEnabled(false);player.stop();accumulator=0;boxingHud.hidden=true;
       if(document.pointerLockElement===canvas)document.exitPointerLock();
@@ -293,6 +294,7 @@ function setFloor(id:FloorId, spawnOverride?: {x:number;z:number;yaw:number}) {
     };
   }
   if(house.darts)house.darts.onPause=pause;
+  if(house.racing)house.racing.onPause=pause;
   scores.bind(house);
   gameAudio.reset();
   if(house.boxing)house.boxing.onHit=hit=>{gameAudio.hit(hit);scores.hit(hit);};
@@ -323,7 +325,8 @@ function updateFloorLabel(id:FloorId) {
 function pause() {
   scores.cancelBoxing();
   // Keep seated games and their ranked run intact while the menu is open.
-  house?.pong?.hidePrompt();house?.darts?.hidePrompt();
+  house?.pong?.hidePrompt();house?.darts?.hidePrompt();house?.racing?.hidePrompt();house?.racing?.clearInput();
+  house?.racing?.clearInput();
   for(const code of ['KeyW','KeyS','ArrowUp','ArrowDown'])house?.pong?.key(code,false);
   gameAudio.setPlaying(false);
   playing=false;mouseStartPending=false;keys.clear();touch.setEnabled(false);accumulator=0;player?.stop();
@@ -409,6 +412,7 @@ document.addEventListener('mousemove',event=>{
 document.addEventListener('mousedown',event=>{
   if(scores.isOpen||!playing||touchMode||activeActivity()||document.pointerLockElement!==canvas || (event.button!==0 && event.button!==2))return;
   event.preventDefault();
+  if(event.button===0&&house.racing?.available){house.racing.enter();return;}
   if(event.button===0&&house.darts?.available){house.darts.enter();return;}
   if(event.button===0&&house.pong?.available){house.pong.enter();return;}
   gameAudio.unlock();
@@ -418,16 +422,16 @@ canvas.addEventListener('contextmenu',event=>{if(playing)event.preventDefault();
 document.addEventListener('keydown',event=>{
   if(scores.isOpen)return;
   if(ready&&account.mode==='supabase'&&event.code==='KeyH'&&!event.repeat&&!(event.target instanceof HTMLInputElement)&&!(event.target instanceof HTMLTextAreaElement)){
-    event.preventDefault();scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':house?.darts?.active?'darts':!boxingHud.hidden?'boxing':undefined);return;
+    event.preventDefault();scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':house?.darts?.active?'darts':house?.racing?.active?'racing':!boxingHud.hidden?'boxing':undefined);return;
   }
   if(playing&&event.code==='Escape'){event.preventDefault();if(!event.repeat)pause();return;}
-  if(playing&&(house?.pong?.key(event.code,true)||house?.darts?.key(event.code,true))){event.preventDefault();return;}
+  if(playing&&(house?.pong?.key(event.code,true)||house?.darts?.key(event.code,true)||house?.racing?.key(event.code,true))){event.preventDefault();return;}
   if(activeActivity())return;
   if(!playing||touchMode || !controlledKeys.has(event.code))return;
   event.preventDefault();keys.add(event.code);
 });
 document.addEventListener('keyup',event=>{
-  house?.pong?.key(event.code,false);
+  house?.pong?.key(event.code,false);house?.racing?.key(event.code,false);
   keys.delete(event.code);
   if(playing && controlledKeys.has(event.code))event.preventDefault();
 });
@@ -520,6 +524,7 @@ function animate(time:number) {
     house.chalkboard?.approach(camera,dt);
     if(!activeActivity())house.pong?.approach(camera);else house.pong?.hidePrompt();
     if(!activeActivity())house.darts?.approach(camera);else house.darts?.hidePrompt();
+    if(!activeActivity())house.racing?.approach(camera);else house.racing?.hidePrompt();
     renderer.render(house.scene,camera);
     if(training)house.boxingView?.renderGloves(renderer,camera);
   } else if(renderDirty) {renderer.render(house.scene,camera);renderDirty=false;}
@@ -585,7 +590,7 @@ $('auth-recover').addEventListener('click',async()=>{
 });
 $('sign-out').addEventListener('click',()=>{releaseInput();void account.signOut();});
 $('show-scores').addEventListener('click',()=>scores.show());
-$('quick-scores').addEventListener('click',()=>scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':house?.darts?.active?'darts':!boxingHud.hidden?'boxing':undefined));
+$('quick-scores').addEventListener('click',()=>scores.show(house?.chalkboard?.active?'tic-tac-toe':house?.pong?.active?'pong':house?.darts?.active?'darts':house?.racing?.active?'racing':!boxingHud.hidden?'boxing':undefined));
 $('save-player').addEventListener('click',async()=>{
   try {
     const response=await account.request('/api/highscores',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({displayName:$<HTMLInputElement>('player-name').value})});

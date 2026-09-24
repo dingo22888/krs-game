@@ -1,3 +1,6 @@
+import {RoundedBoxGeometry} from 'three/addons/geometries/RoundedBoxGeometry.js';
+import {livingTexture} from './living-textures.ts';
+import {RacingView} from './racing-view.ts';
 import {DartsView} from './darts-view.ts';
 import {configureBrewLighting} from './brew-lighting.ts';
 import { brewTexture, addBrewDecor } from './brew-textures.ts';
@@ -84,6 +87,10 @@ export function createHouseScene(plans:FloorPlan[]) {
   plans=prepared.map(p=>p.plan);
   const activity=prepared.find(p=>p.boxing)?.boxing;
   const materials:Record<MaterialKind,THREE.MeshStandardMaterial> = {
+    livingGray:new THREE.MeshStandardMaterial({map:livingTexture('wall'),roughness:1}),
+    livingRug:new THREE.MeshStandardMaterial({map:livingTexture('rug'),roughness:1}),
+    livingArt:new THREE.MeshStandardMaterial({map:livingTexture('art'),roughness:.85}),
+    livingSheer:new THREE.MeshStandardMaterial({color:'#d6d8d3',transparent:true,opacity:.67,roughness:1}),
     wall:new THREE.MeshStandardMaterial({color:'#e2e4dd',roughness:.91}),
     ceiling:new THREE.MeshStandardMaterial({color:'#f4f4ea',roughness:1}),
     floor:new THREE.MeshStandardMaterial({color:'#a7aaa8',roughness:.82}),
@@ -125,7 +132,7 @@ export function createHouseScene(plans:FloorPlan[]) {
     if (!specs.length) continue;
     // Transparent panes stay separate for sorting; opaque objects share only
     // their exposed surfaces, including adjoining sofa and cabinet pieces.
-    const groups = kind === 'glass' || kind === 'brewAlbum' ? specs.map(b => [b]) : [specs];
+    const groups = kind === 'glass' || (kind === 'brewAlbum'||kind==='livingArt') ? specs.map(b => [b]) : [specs];
     for (const group of groups) {
       const geometry = new THREE.BufferGeometry();
       geometry.setAttribute('position', new THREE.BufferAttribute(boxSurfacePositions(group), 3));
@@ -134,7 +141,7 @@ export function createHouseScene(plans:FloorPlan[]) {
         const pos=geometry.getAttribute('position'),normal=geometry.getAttribute('normal'),uv=[];
         for(let i=0;i<pos.count;i++) {
           const y=Math.abs(normal.getY(i))>.5;
-          if(kind==='brewAlbum'){
+          if(kind==='brewAlbum'||kind==='livingArt'){
             const b=group[0],side=Math.abs(normal.getX(i))>.5,axis=side?2:0;
             uv.push(((side?pos.getZ(i):pos.getX(i))-b.position[axis])/b.size[axis]+.5,(pos.getY(i)-b.position[1])/b.size[1]+.5);
           }else uv.push(Math.abs(normal.getX(i))>.5?pos.getZ(i):pos.getX(i),y?pos.getZ(i):pos.getY(i));
@@ -148,7 +155,7 @@ export function createHouseScene(plans:FloorPlan[]) {
     }
   }
   for(const spec of model.boxes.filter(b=>b.shape)) {
-    const geometry=spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(spec.shape==='shade'?.25:.5,.5,1,40,1,spec.shape==='drum');
+    const geometry=spec.shape==='rounded'?new RoundedBoxGeometry(1,1,1,2,.09):spec.shape==='ellipsoid'?new THREE.SphereGeometry(.5,32,16):new THREE.CylinderGeometry(spec.shape==='shade'?.25:.5,.5,1,40,1,spec.shape==='drum');
     if(spec.shape==='ovalX')geometry.rotateZ(Math.PI/2);
     if(spec.shape==='ovalZ')geometry.rotateX(Math.PI/2);
     const mesh=new THREE.Mesh(geometry,materials[spec.material]);
@@ -211,11 +218,14 @@ export function createHouseScene(plans:FloorPlan[]) {
   const chalkboard=pantryPlan&&pantry?new Chalkboard(pantryPlan,pantry,scene):undefined;
   const brewPlan=plans.find(p=>p.rooms.some(r=>/^braukeller$/i.test(r.name)));
   const darts=brewPlan?new DartsView(brewPlan,scene):undefined;
+  const lounge=plans.find(p=>p.furniture.some(f=>f.kind==='tv'&&f.finish==='living'));
+  const tv=lounge?.furniture.find(f=>f.kind==='tv'&&f.finish==='living');
+  const racing=lounge&&tv?new RacingView(lounge,tv,scene):undefined;
   configureBrewLighting(scene,plans);
   return {
-    scene,world,boxing,boxingView,chalkboard,pong,darts,
+    scene,world,boxing,boxingView,chalkboard,pong,darts,racing,
     dispose() {
-      boxingView?.dispose();chalkboard?.dispose();pong?.dispose();darts?.dispose();
+      boxingView?.dispose();chalkboard?.dispose();pong?.dispose();darts?.dispose();racing?.dispose();
       const geometries = new Set<THREE.BufferGeometry>();
       const mats = new Set<THREE.Material>();
       scene.traverse(object => {

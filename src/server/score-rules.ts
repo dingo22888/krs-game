@@ -1,6 +1,6 @@
 import {dartScore} from '../game/darts.ts';
 import { HttpError } from './supabase.ts';
-export const games = ['pong', 'boxing', 'tic-tac-toe', 'darts'] as const;
+export const games = ['pong', 'boxing', 'tic-tac-toe', 'darts', 'racing'] as const;
 export type GameId = typeof games[number];
 export function gameId(value: unknown): GameId {
   if (!games.includes(value as GameId)) throw new HttpError(400, 'Unbekanntes Minispiel.');
@@ -14,6 +14,10 @@ export function scoreResult(game: GameId, value: unknown) {
     if (typeof n !== 'number' || !Number.isInteger(n) || n < 0 || n > max) throw new HttpError(400, 'Ungültiges Spielergebnis.');
     return n;
   };
+  if (game === 'racing') {
+    const distance=number('distance',2400),collisions=number('collisions',60);
+    return {score:distance,secondary:0,details:{distance,collisions}};
+  }
   if (game === 'darts') {
     if (!Array.isArray(data.throws) || data.throws.length !== 9) throw new HttpError(400, 'Es müssen neun Pfeile geworfen sein.');
     const throws = data.throws.map((hit:unknown)=>{

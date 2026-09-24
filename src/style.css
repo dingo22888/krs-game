@@ -125,3 +125,8 @@ body.darts-playing .map,body.darts-playing .play-help,body.darts-playing .moveme
 @media(max-height:500px){.darts-caption{top:42px;padding:5px 10px}.darts-caption span{font-size:10px}.darts-caption p{font-size:11px;margin:3px 0}.darts-ui .pong-actions{bottom:6px}}
 body.darts-playing .score-notice{top:auto;bottom:82px}
 @media(max-height:500px){body.darts-playing .score-notice{bottom:56px;max-width:94vw;padding:5px 9px}.darts-caption{top:8px}.darts-caption span{max-width:65vw}}
+.racing-ui{cursor:ew-resize}
+body:not(.playing) .racing-ui,body:not(.playing) .racing-prompt{display:none}
+body.racing-playing .map,body.racing-playing .play-help,body.racing-playing .movement,body.racing-playing #crosshair,body.racing-playing .location,body.racing-playing .brand{visibility:hidden}
+body.racing-playing .score-notice{top:auto;bottom:82px}
+@media(max-height:500px){body.racing-playing .score-notice{bottom:56px}.racing-ui .pong-instructions span{font-size:10px}}

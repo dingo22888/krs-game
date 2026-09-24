@@ -1,12 +1,14 @@
+import type {RacingView} from '../game/racing-view.ts';
 import type {DartsView} from '../game/darts-view.ts';
 import { account } from './account.ts';
 import type { PongView } from '../game/pong-view.ts';
 import type { Chalkboard } from '../game/chalkboard.ts';
 import type { Boxing, BoxingHit } from '../game/boxing.ts';
 
-type Game = 'pong' | 'boxing' | 'tic-tac-toe' | 'darts';
-const labels: Record<Game,string> = { darts:'Darts', pong:'Pong', boxing:'Boxtraining', 'tic-tac-toe':'Tic-Tac-Toe' };
+type Game = 'pong' | 'boxing' | 'tic-tac-toe' | 'darts' | 'racing';
+const labels: Record<Game,string> = { racing:'KRS Turbo', darts:'Darts', pong:'Pong', boxing:'Boxtraining', 'tic-tac-toe':'Tic-Tac-Toe' };
 const rules: Record<Game,string> = {
+  racing:'60 Sekunden: weiteste Strecke. Rempler und Grünstreifen bremsen.',
   darts:'9 Pfeile: Gesamtpunkte. Double zählt doppelt, Triple dreifach, Bull 25 und Bullseye 50.',
   pong:'Partie bis 5. Siege vor Niederlagen, danach Punktedifferenz.',
   boxing:'60 Sekunden: längste abwechselnde Serie, danach Trefferzahl. Pausieren bricht die Wertung ab.',
@@ -63,7 +65,7 @@ export class Scoreboard {
     button.title=rules[game];
     button.addEventListener('click',()=>{void this.start(game,begin);});container.prepend(button);this.buttons.push(button);return button;
   }
-  bind(house:{pong?:PongView;chalkboard?:Chalkboard;boxing?:Boxing;darts?:DartsView}){
+  bind(house:{pong?:PongView;chalkboard?:Chalkboard;boxing?:Boxing;darts?:DartsView;racing?:RacingView}){
     this.buttons.forEach(b=>b.remove());this.buttons=[];this.boxingButton=undefined;this.boxingBegin=undefined;
     if(account.mode!=='supabase')return;
     if(house.pong){
@@ -86,6 +88,12 @@ export class Scoreboard {
       darts.onResult=result=>{void this.finish('darts',result);};
       darts.onCancel=()=>this.cancelGame('darts');
     }
+    if(house.racing){
+      const racing=house.racing;
+      racing.onNewGame=()=>{void this.start('racing',()=>racing.startRanked());};
+      racing.onResult=result=>{void this.finish('racing',result);};
+      racing.onCancel=()=>this.cancelGame('racing');
+    }
     if(house.boxing){
       this.boxingBegin=()=>house.boxing!.cancel();
       this.boxingButton=this.button(document.getElementById('boxing-hud')!,'boxing',()=>house.boxing!.cancel());
@@ -105,7 +113,7 @@ export class Scoreboard {
       this.run={id:data.runId,game,start:performance.now(),hits:0,combo:0};begin();
       if(this.isOpen)this.suspendedAt=performance.now();
       this.message(`${labels[game]} · Wertung läuft${game==='tic-tac-toe'?' · 10 Partien':''}`);
-      if(game==='darts')this.notice.hidden=true;
+      if(game==='darts'||game==='racing')this.notice.hidden=true;
     }catch(error){if(generation===this.generation)this.message(error instanceof Error?error.message:'Wertung konnte nicht gestartet werden.');}
     finally{if(generation===this.generation){this.busy=false;this.buttons.forEach(b=>b.disabled=Boolean(this.run));}}
   }
@@ -172,7 +180,7 @@ export class Scoreboard {
       const table=document.createElement('table');
       const head=document.createElement('tr');for(const text of ['Platz','Spieler','Rekord']){const cell=document.createElement('th');cell.textContent=text;head.append(cell);}table.append(head);
       for(const item of data.entries){const row=document.createElement('tr');if(item.own)row.className='own-score';
-        const score=game==='darts'?`${item.score} Punkte / 9 Pfeile`:game==='boxing'?`${item.score} Serie / ${item.secondary_score} Treffer`:game==='pong'?`${item.score?'Sieg':'Niederlage'} · ${item.secondary_score>0?'+':''}${item.secondary_score}`:`${item.score} / 30`;
+        const score=game==='racing'?`${item.score} m`:game==='darts'?`${item.score} Punkte / 9 Pfeile`:game==='boxing'?`${item.score} Serie / ${item.secondary_score} Treffer`:game==='pong'?`${item.score?'Sieg':'Niederlage'} · ${item.secondary_score>0?'+':''}${item.secondary_score}`:`${item.score} / 30`;
         for(const text of [String(item.place),`${item.display_name}${item.own?' (du)':''}`,score]){const cell=document.createElement('td');cell.textContent=text;row.append(cell);}table.append(row);
       }
       this.entries.append(table);const foot=document.createElement('p');foot.textContent=data.entries.length?'Top 20 und dein bester Lauf. Gleiche Ergebnisse teilen den Rang.':'Noch keine Rekorde. Starte im Minispiel eine Wertung!';this.entries.append(foot);

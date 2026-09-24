@@ -122,3 +122,18 @@ die Punkte aus den neun Treffkoordinaten; das Ergebnis bleibt wie bei den
 anderen Minispielen clientbasiert (keine manipulationssichere Turnierwertung).
 Die Datenbank prüft Wertebereich, Mitgliedschaft, Laufdauer und einmaligen Abschluss.
 Escape und Highscores pausieren die Partie; „Zurück ins Haus“ bricht sie ab.
+
+### KRS Turbo (Wohnzimmer-TV)
+
+`racing` is a 60-second arcade run. The leaderboard ranks completed runs by
+whole metres travelled (maximum 2400). Collision counts are retained as details;
+collisions and driving off the road slow the car. Server validation requires an
+active member, a matching run, bounded integer results and at least 58 seconds
+since starting. Like the other browser games, this is a household leaderboard,
+not a cheat-proof competition: the server does not replay client driving input.
+
+Controls: approach and look at the living-room TV, then E/click or the touch
+prompt. A/D or arrow keys steer; touch-and-drag steers on mobile. Escape or Pause
+suspends the race, H opens scores, and the explicit return button leaves the TV.
+The `racing_highscores` migration extends existing game constraints and RPCs
+without granting direct client access to score tables.
