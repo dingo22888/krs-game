@@ -27,7 +27,8 @@ export function prepareLivingRoom(input:Record<FloorId,FloorPlan>){
  const diagonal=65*.0254,width=diagonal*16/Math.hypot(16,9),height=diagonal*9/Math.hypot(16,9);
  add('tv',[east-.066,z-width/2,east-.016,z+width/2],height,'west',1.03);
  add('livingMedia',[east-.43,z-1.05,east-.04,z+1.05],.44,'west');
- add('livingSpeaker',[east-.38,z-1.48,east-.08,z-1.12],.43,'west');
+ // Keep the hall-side end clear: the subwoofer sits beside the south end of the console.
+ add('livingSpeaker',[east-.80,south-.53,east-.50,south-.17],.43,'west');
  add('livingSpeaker',[east-.065,z-.43,east-.025,z+.43],.065,'west',.92);
  add('diningPlant',[west+.06,south-.55,west+.36,south-.25],.94);
  for(const [i,x] of [west+1.05,west+1.64].entries())add('livingArt',[x,south-.018,x+.38,south-.007],.84,'north',1.12-i*.13);
